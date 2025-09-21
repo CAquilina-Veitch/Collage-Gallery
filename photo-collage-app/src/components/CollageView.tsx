@@ -132,13 +132,13 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
   };
 
   // Helper functions for touch distance and angle
-  const getTouchDistance = (touches: TouchList) => {
+  const getTouchDistance = (touches: React.TouchList) => {
     const dx = touches[0].clientX - touches[1].clientX;
     const dy = touches[0].clientY - touches[1].clientY;
     return Math.sqrt(dx * dx + dy * dy);
   };
 
-  const getTouchAngle = (touches: TouchList) => {
+  const getTouchAngle = (touches: React.TouchList) => {
     const dx = touches[1].clientX - touches[0].clientX;
     const dy = touches[1].clientY - touches[0].clientY;
     return Math.atan2(dy, dx) * 180 / Math.PI;
