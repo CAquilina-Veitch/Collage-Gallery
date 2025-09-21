@@ -108,8 +108,8 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ album }) => {
       if (!photo.inCollage) {
         await addDoc(collection(db, 'albums', album.id, 'collage'), {
           photoId: photo.id,
-          x: Math.random() * 300,
-          y: Math.random() * 300,
+          x: 50 + Math.random() * 200,
+          y: 50 + Math.random() * 200,
           rotation: 0,
           scale: 1,
           zIndex: Date.now(),

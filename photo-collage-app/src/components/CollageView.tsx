@@ -106,40 +106,43 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
   };
 
   return (
-    <div className="relative h-screen bg-gray-100 overflow-hidden" ref={containerRef}>
-      <div className="absolute top-4 left-4 z-10">
+    <div className="relative h-screen bg-gray-100 overflow-auto touch-pan-x touch-pan-y" ref={containerRef}>
+      <div className="fixed top-4 left-4 z-10">
         <h2 className="text-2xl font-bold bg-white px-4 py-2 rounded shadow">
           {album.name} - Collage Mode
         </h2>
       </div>
 
       {/* Collage Canvas */}
-      <div className="relative w-full h-full collage-canvas">
+      <div className="relative min-w-full min-h-full collage-canvas" style={{ width: '200%', height: '200%' }}>
         {collageItems.map((item) => (
           <motion.div
             key={item.id}
             drag
             dragMomentum={false}
+            dragElastic={0}
             onDragEnd={(e, info) => handleDragEnd(item.id, e as any, info)}
             whileDrag={{ scale: 1.05 }}
-            initial={{ x: item.x, y: item.y }}
-            animate={{ x: item.x, y: item.y, rotate: item.rotation, scale: item.scale }}
+            initial={{ x: item.x || 50, y: item.y || 50 }}
+            animate={{ x: item.x || 50, y: item.y || 50, rotate: item.rotation || 0 }}
             style={{
               position: 'absolute',
               zIndex: item.zIndex,
               cursor: 'move',
+              touchAction: 'none',
+              transform: `scale(${item.scale || 1})`,
             }}
-            onClick={() => {
+            onTap={() => {
               setSelectedItem(item.id);
               setShowSettings(true);
             }}
           >
             {item.mode === 'polaroid' ? (
-              <div className="bg-white p-4 shadow-2xl" style={{ transform: `scale(${item.scale})` }}>
+              <div className="bg-white p-4 shadow-2xl">
                 <img
                   src={item.photo.url}
                   alt={item.photo.filename}
-                  className="w-64 h-64 object-cover"
+                  className="w-48 h-48 sm:w-64 sm:h-64 object-cover"
                   draggable={false}
                 />
                 {item.captionText && (
@@ -152,8 +155,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
               <img
                 src={item.photo.url}
                 alt={item.photo.filename}
-                className="w-64 h-64 object-cover shadow-lg"
-                style={{ transform: `scale(${item.scale})` }}
+                className="w-48 h-48 sm:w-64 sm:h-64 object-cover shadow-lg"
                 draggable={false}
               />
             )}
