@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated and whitelisted
+    function isWhitelisted() {
+      return request.auth != null && 
+             request.auth.token.email in ['your-email@gmail.com', 'your-girlfriend-email@gmail.com'];
+    }
+    
+    // Users collection - only whitelisted users can read their own data
+    match /users/{userId} {
+      allow read: if isWhitelisted() && request.auth.uid == userId;
+      allow write: if isWhitelisted() && request.auth.uid == userId;
+    }
+    
+    // Albums collection - whitelisted users can access albums they're shared with
+    match /albums/{albumId} {
+      allow read: if isWhitelisted() && 
+                     request.auth.token.email in resource.data.sharedWith;
+      allow create: if isWhitelisted();
+      allow update: if isWhitelisted() && 
+                       request.auth.token.email in resource.data.sharedWith;
+      allow delete: if isWhitelisted() && 
+                       request.auth.token.email == resource.data.createdBy;
+      
+      // Photos subcollection
+      match /photos/{photoId} {
+        allow read: if isWhitelisted() && 
+                       request.auth.token.email in get(/databases/$(database)/documents/albums/$(albumId)).data.sharedWith;
+        allow write: if isWhitelisted() && 
+                        request.auth.token.email in get(/databases/$(database)/documents/albums/$(albumId)).data.sharedWith;
+      }
+      
+      // Collage subcollection
+      match /collage/{itemId} {
+        allow read: if isWhitelisted() && 
+                       request.auth.token.email in get(/databases/$(database)/documents/albums/$(albumId)).data.sharedWith;
+        allow write: if isWhitelisted() && 
+                        request.auth.token.email in get(/databases/$(database)/documents/albums/$(albumId)).data.sharedWith;
+      }
+    }
+  }
+}

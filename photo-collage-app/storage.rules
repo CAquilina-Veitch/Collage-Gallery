@@ -1,0 +1,16 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper function to check if user is authenticated and whitelisted
+    function isWhitelisted() {
+      return request.auth != null && 
+             request.auth.token.email in ['your-email@gmail.com', 'your-girlfriend-email@gmail.com'];
+    }
+    
+    // Allow whitelisted users to read/write their album photos
+    match /albums/{albumId}/{allPaths=**} {
+      allow read: if isWhitelisted();
+      allow write: if isWhitelisted();
+    }
+  }
+}
