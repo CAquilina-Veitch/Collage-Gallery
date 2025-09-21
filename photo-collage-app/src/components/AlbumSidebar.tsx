@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { db, ALLOWED_EMAILS } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Album {
@@ -144,6 +144,3 @@ export const AlbumSidebar: React.FC<AlbumSidebarProps> = ({
     </>
   );
 };
-
-// Import ALLOWED_EMAILS from config
-import { ALLOWED_EMAILS } from '../firebase/config';

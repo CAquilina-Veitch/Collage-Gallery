@@ -94,9 +94,6 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
     });
   };
 
-  const handlePinch = (itemId: string, scale: number) => {
-    updateCollageItem(itemId, { scale });
-  };
 
   const bringForward = (item: CollagePhotoItem) => {
     const maxZ = Math.max(...collageItems.map(i => i.zIndex));
