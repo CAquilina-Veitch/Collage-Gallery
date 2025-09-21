@@ -10,7 +10,8 @@
       "Bash(npm start)",
       "Bash(ls:*)",
       "Bash(./node_modules/.bin/firebase:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(mv:*)"
     ],
     "deny": []
   }
