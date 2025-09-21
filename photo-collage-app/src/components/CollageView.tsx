@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Album, Photo, CollageItem } from '../types';
-import { motion, PanInfo } from 'framer-motion';
+import { CollagePhotoItem } from './CollagePhotoItem';
 
 interface CollageViewProps {
   album: Album;
@@ -84,15 +84,6 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
     }
   };
 
-  const handleDragEnd = (itemId: string, event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    const item = collageItems.find(i => i.id === itemId);
-    if (!item) return;
-
-    updateCollageItem(itemId, {
-      x: item.x + info.offset.x,
-      y: item.y + info.offset.y
-    });
-  };
 
 
   const bringForward = (item: CollagePhotoItem) => {
@@ -116,50 +107,15 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
       {/* Collage Canvas */}
       <div className="relative min-w-full min-h-full collage-canvas" style={{ width: '200%', height: '200%' }}>
         {collageItems.map((item) => (
-          <motion.div
+          <CollagePhotoItem
             key={item.id}
-            drag
-            dragMomentum={false}
-            dragElastic={0}
-            onDragEnd={(e, info) => handleDragEnd(item.id, e as any, info)}
-            whileDrag={{ scale: 1.05 }}
-            initial={{ x: item.x || 50, y: item.y || 50 }}
-            animate={{ x: item.x || 50, y: item.y || 50, rotate: item.rotation || 0 }}
-            style={{
-              position: 'absolute',
-              zIndex: item.zIndex,
-              cursor: 'move',
-              touchAction: 'none',
-              transform: `scale(${item.scale || 1})`,
-            }}
+            item={item}
+            onUpdate={(updates) => updateCollageItem(item.id, updates)}
             onTap={() => {
               setSelectedItem(item.id);
               setShowSettings(true);
             }}
-          >
-            {item.mode === 'polaroid' ? (
-              <div className="bg-white p-4 shadow-2xl">
-                <img
-                  src={item.photo.url}
-                  alt={item.photo.filename}
-                  className="w-48 h-48 sm:w-64 sm:h-64 object-cover"
-                  draggable={false}
-                />
-                {item.captionText && (
-                  <p className="mt-2 text-center text-gray-800 font-handwriting">
-                    {item.captionText}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <img
-                src={item.photo.url}
-                alt={item.photo.filename}
-                className="w-48 h-48 sm:w-64 sm:h-64 object-cover shadow-lg"
-                draggable={false}
-              />
-            )}
-          </motion.div>
+          />
         ))}
       </div>
 
