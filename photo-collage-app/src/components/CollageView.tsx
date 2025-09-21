@@ -21,6 +21,8 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
   const lastTouchPos = useRef({ x: 0, y: 0 });
   const lastPinchDistance = useRef(0);
   const activeItemId = useRef<string | null>(null);
+  const touchStartTime = useRef<number>(0);
+  const itemTouchData = useRef<{ [key: string]: { startTime: number; startPos: { x: number; y: number }; scale: number; rotation: number } }>({});
 
   useEffect(() => {
     if (!album) return;
@@ -129,28 +131,99 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
     lastPinchDistance.current = 0;
   };
 
+  // Helper functions for touch distance and angle
+  const getTouchDistance = (touches: TouchList) => {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const getTouchAngle = (touches: TouchList) => {
+    const dx = touches[1].clientX - touches[0].clientX;
+    const dy = touches[1].clientY - touches[0].clientY;
+    return Math.atan2(dy, dx) * 180 / Math.PI;
+  };
+
   // Photo item handlers
-  const handleItemStart = (e: React.TouchEvent, itemId: string) => {
+  const handleItemStart = (e: React.TouchEvent, item: CollagePhotoItem) => {
     e.stopPropagation();
-    activeItemId.current = itemId;
+    activeItemId.current = item.id;
+    touchStartTime.current = Date.now();
+
+    itemTouchData.current[item.id] = {
+      startTime: Date.now(),
+      startPos: { x: e.touches[0].clientX, y: e.touches[0].clientY },
+      scale: item.scale || 1,
+      rotation: item.rotation || 0
+    };
+
+    if (e.touches.length === 2) {
+      // Start pinch/rotation gesture
+      itemTouchData.current[item.id].scale = getTouchDistance(e.touches);
+      itemTouchData.current[item.id].rotation = getTouchAngle(e.touches);
+    }
   };
 
   const handleItemMove = (e: React.TouchEvent, item: CollagePhotoItem) => {
     e.stopPropagation();
-    if (e.touches.length === 1 && activeItemId.current === item.id) {
+    
+    if (!itemTouchData.current[item.id] || activeItemId.current !== item.id) return;
+
+    if (e.touches.length === 1) {
+      // Single finger drag
       const touch = e.touches[0];
       const rect = canvasRef.current?.getBoundingClientRect();
       if (rect) {
         const x = (touch.clientX - rect.left - canvasTransform.x) / canvasTransform.scale;
         const y = (touch.clientY - rect.top - canvasTransform.y) / canvasTransform.scale;
         
-        updateCollageItem(item.id, { x: x - 100, y: y - 100 });
+        updateCollageItem(item.id, { x: x - 128, y: y - 128 }); // 128 = half of 256px image
       }
+    } else if (e.touches.length === 2) {
+      // Two finger pinch and rotate
+      const currentDistance = getTouchDistance(e.touches);
+      const currentAngle = getTouchAngle(e.touches);
+      const data = itemTouchData.current[item.id];
+
+      const scaleChange = currentDistance / data.scale;
+      const newScale = Math.max(0.5, Math.min(3, (item.scale || 1) * scaleChange));
+
+      const rotationChange = currentAngle - data.rotation;
+      const newRotation = (item.rotation || 0) + rotationChange;
+
+      updateCollageItem(item.id, { 
+        scale: newScale,
+        rotation: newRotation
+      });
+
+      // Update reference values
+      data.scale = currentDistance;
+      data.rotation = currentAngle;
     }
   };
 
-  const handleItemEnd = () => {
+  const handleItemEnd = (e: React.TouchEvent, item: CollagePhotoItem) => {
+    const touchDuration = Date.now() - touchStartTime.current;
+    
+    // Check if this was a tap (short duration, minimal movement)
+    if (touchDuration < 300 && e.touches.length === 0) {
+      const data = itemTouchData.current[item.id];
+      if (data) {
+        const distance = Math.sqrt(
+          Math.pow(e.changedTouches[0].clientX - data.startPos.x, 2) +
+          Math.pow(e.changedTouches[0].clientY - data.startPos.y, 2)
+        );
+        
+        // If movement was minimal, treat as tap
+        if (distance < 10) {
+          setSelectedItem(item.id);
+          setShowSettings(true);
+        }
+      }
+    }
+
     activeItemId.current = null;
+    delete itemTouchData.current[item.id];
   };
 
   const bringForward = (item: CollagePhotoItem) => {
@@ -216,16 +289,16 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
           {collageItems.map((item) => (
             <div
               key={item.id}
-              className="absolute touch-none"
+              className="absolute cursor-pointer"
               style={{
                 left: `${item.x || 50}px`,
                 top: `${item.y || 50}px`,
                 transform: `rotate(${item.rotation || 0}deg) scale(${item.scale || 1})`,
                 zIndex: item.zIndex,
               }}
-              onTouchStart={(e) => handleItemStart(e, item.id)}
+              onTouchStart={(e) => handleItemStart(e, item)}
               onTouchMove={(e) => handleItemMove(e, item)}
-              onTouchEnd={handleItemEnd}
+              onTouchEnd={(e) => handleItemEnd(e, item)}
               onClick={() => {
                 setSelectedItem(item.id);
                 setShowSettings(true);
@@ -236,7 +309,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
                   <img
                     src={item.photo.url}
                     alt={item.photo.filename}
-                    className="w-48 h-48 sm:w-64 sm:h-64 object-cover pointer-events-none"
+                    className="w-64 h-64 object-cover pointer-events-none"
                     draggable={false}
                   />
                   {item.captionText && (
@@ -249,7 +322,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
                 <img
                   src={item.photo.url}
                   alt={item.photo.filename}
-                  className="w-48 h-48 sm:w-64 sm:h-64 object-cover shadow-lg pointer-events-none"
+                  className="w-64 h-64 object-cover shadow-lg pointer-events-none"
                   draggable={false}
                 />
               )}
@@ -260,16 +333,26 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
 
       {/* Settings Menu */}
       {showSettings && selectedItem && (
-        <div className="fixed top-20 right-4 bg-white p-6 rounded-lg shadow-xl z-20 w-80 max-w-[90vw]">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-semibold">Photo Settings</h3>
-            <button
-              onClick={() => setShowSettings(false)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              ✕
-            </button>
-          </div>
+        <>
+          {/* Mobile overlay */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+            onClick={() => setShowSettings(false)}
+          />
+          
+          {/* Settings Panel */}
+          <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-xl shadow-xl z-40 max-h-[70vh] overflow-y-auto md:top-20 md:bottom-auto md:right-4 md:left-auto md:w-80 md:max-w-[90vw] md:rounded-lg md:max-h-none">
+            <div className="flex justify-between items-center p-4 border-b md:p-6 md:mb-4 md:border-b-0">
+              <h3 className="font-semibold text-lg">Photo Settings</h3>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="text-gray-500 hover:text-gray-700 p-2 text-xl"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-4 md:p-0 md:px-6">
 
           {(() => {
             const item = collageItems.find(i => i.id === selectedItem);
@@ -277,18 +360,18 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
 
             return (
               <>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">Display Mode</label>
-                  <div className="flex gap-2">
+                <div className="mb-6">
+                  <label className="block text-sm font-medium mb-3">Display Mode</label>
+                  <div className="flex gap-3">
                     <button
                       onClick={() => updateCollageItem(item.id, { mode: 'polaroid' })}
-                      className={`px-3 py-1 rounded ${item.mode === 'polaroid' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+                      className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${item.mode === 'polaroid' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                     >
                       Polaroid
                     </button>
                     <button
                       onClick={() => updateCollageItem(item.id, { mode: 'plain' })}
-                      className={`px-3 py-1 rounded ${item.mode === 'plain' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+                      className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${item.mode === 'plain' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                     >
                       Plain
                     </button>
@@ -296,20 +379,20 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
                 </div>
 
                 {item.mode === 'polaroid' && (
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium mb-2">Caption</label>
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium mb-3">Caption</label>
                     <input
                       type="text"
                       value={item.captionText || ''}
                       onChange={(e) => updateCollageItem(item.id, { captionText: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-md"
+                      className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
                       placeholder="Add a caption..."
                     />
                   </div>
                 )}
 
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">Size: {(item.scale || 1).toFixed(2)}x</label>
+                <div className="mb-6">
+                  <label className="block text-sm font-medium mb-3">Size: {(item.scale || 1).toFixed(2)}x</label>
                   <input
                     type="range"
                     min="0.5"
@@ -317,12 +400,12 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
                     step="0.1"
                     value={item.scale || 1}
                     onChange={(e) => updateCollageItem(item.id, { scale: parseFloat(e.target.value) })}
-                    className="w-full"
+                    className="w-full h-8 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                   />
                 </div>
 
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">Rotation: {item.rotation || 0}°</label>
+                <div className="mb-6">
+                  <label className="block text-sm font-medium mb-3">Rotation: {item.rotation || 0}°</label>
                   <input
                     type="range"
                     min="-45"
@@ -330,35 +413,37 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
                     step="5"
                     value={item.rotation || 0}
                     onChange={(e) => updateCollageItem(item.id, { rotation: parseInt(e.target.value) })}
-                    className="w-full"
+                    className="w-full h-8 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                   />
                 </div>
 
-                <div className="mb-4 flex gap-2">
+                <div className="mb-6 flex gap-3">
                   <button
                     onClick={() => bringForward(item)}
-                    className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
                   >
                     Bring Forward
                   </button>
                   <button
                     onClick={() => sendBackward(item)}
-                    className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
                   >
-                    Send Backward
+                    Send Back
                   </button>
                 </div>
 
                 <button
                   onClick={() => deleteFromCollage(item)}
-                  className="w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                  className="w-full px-4 py-4 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors mb-4 md:mb-0"
                 >
                   Remove from Collage
                 </button>
               </>
             );
           })()}
-        </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

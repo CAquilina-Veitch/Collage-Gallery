@@ -11,7 +11,10 @@
       "Bash(ls:*)",
       "Bash(./node_modules/.bin/firebase:*)",
       "Bash(rm:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)"
     ],
     "deny": []
   }
