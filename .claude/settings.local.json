@@ -9,7 +9,8 @@
       "Bash(npx firebase login:*)",
       "Bash(npm start)",
       "Bash(ls:*)",
-      "Bash(./node_modules/.bin/firebase:*)"
+      "Bash(./node_modules/.bin/firebase:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }
