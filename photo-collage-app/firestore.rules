@@ -4,7 +4,7 @@ service cloud.firestore {
     // Helper function to check if user is authenticated and whitelisted
     function isWhitelisted() {
       return request.auth != null && 
-             request.auth.token.email in ['your-email@gmail.com', 'your-girlfriend-email@gmail.com'];
+             request.auth.token.email in ['codethathat@gmail.com', 'marsha.o.y@gmail.com', 'commanderow@gmail.com'];
     }
     
     // Users collection - only whitelisted users can read their own data

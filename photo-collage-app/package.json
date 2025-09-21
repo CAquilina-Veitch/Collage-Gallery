@@ -13,6 +13,7 @@
     "@types/react-dom": "^19.1.9",
     "@types/react-router-dom": "^5.3.3",
     "firebase": "^12.3.0",
+    "firebase-tools": "^14.17.0",
     "framer-motion": "^12.23.16",
     "heic2any": "^0.0.4",
     "html2canvas": "^1.4.1",
@@ -31,7 +32,10 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build"
+    "deploy": "gh-pages -d build",
+    "firebase:login": "node node_modules/firebase-tools/lib/bin/firebase.js login",
+    "firebase:deploy-rules": "node node_modules/firebase-tools/lib/bin/firebase.js deploy --only firestore:rules,storage:rules",
+    "firebase:init": "node node_modules/firebase-tools/lib/bin/firebase.js init"
   },
   "eslintConfig": {
     "extends": [

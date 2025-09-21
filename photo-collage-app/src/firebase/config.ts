@@ -5,12 +5,13 @@ import { getStorage } from 'firebase/storage';
 
 // Replace these with your Firebase config
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAIl4vWF73TBXAyI7G_Fw9sxtD63innGag",
+  authDomain: "photo-collage-app-9e42d.firebaseapp.com",
+  projectId: "photo-collage-app-9e42d",
+  storageBucket: "photo-collage-app-9e42d.firebasestorage.app",
+  messagingSenderId: "82565536571",
+  appId: "1:82565536571:web:de4bd1ddc0a4b8ea6bb51e",
+  measurementId: "G-P3Y1KYM0P9"
 };
 
 // Initialize Firebase
@@ -24,8 +25,9 @@ export const storage = getStorage(app);
 
 // Whitelist of allowed emails
 export const ALLOWED_EMAILS = [
-  'your-email@gmail.com',
-  'your-girlfriend-email@gmail.com'
+  'codethathat@gmail.com',
+  'marsha.o.y@gmail.com',
+  'commanderow@gmail.com'
 ];
 
 export default app;
