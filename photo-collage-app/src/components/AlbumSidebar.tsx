@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { db, ALLOWED_EMAILS } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -28,6 +28,8 @@ export const AlbumSidebar: React.FC<AlbumSidebarProps> = ({
   const [albums, setAlbums] = useState<Album[]>([]);
   const [newAlbumName, setNewAlbumName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [editingAlbum, setEditingAlbum] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
 
   useEffect(() => {
     if (!currentUser?.email) return;
@@ -66,6 +68,30 @@ export const AlbumSidebar: React.FC<AlbumSidebarProps> = ({
     } finally {
       setIsCreating(false);
     }
+  };
+
+  const startEditing = (album: Album) => {
+    setEditingAlbum(album.id);
+    setEditName(album.name);
+  };
+
+  const saveEdit = async () => {
+    if (!editName.trim() || !editingAlbum) return;
+
+    try {
+      await updateDoc(doc(db, 'albums', editingAlbum), {
+        name: editName.trim()
+      });
+      setEditingAlbum(null);
+      setEditName('');
+    } catch (error) {
+      console.error('Error updating album:', error);
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingAlbum(null);
+    setEditName('');
   };
 
   return (
@@ -122,21 +148,70 @@ export const AlbumSidebar: React.FC<AlbumSidebarProps> = ({
           {/* Albums list */}
           <div className="flex-1 overflow-y-auto">
             {albums.map((album) => (
-              <button
+              <div
                 key={album.id}
-                onClick={() => {
-                  onSelectAlbum(album);
-                  onClose();
-                }}
-                className={`w-full text-left p-4 hover:bg-gray-50 border-b transition-colors ${
+                className={`border-b transition-colors ${
                   selectedAlbum?.id === album.id ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''
                 }`}
               >
-                <div className="font-medium">{album.name}</div>
-                <div className="text-sm text-gray-500">
-                  Created by {album.createdBy === currentUser?.email ? 'you' : album.createdBy}
-                </div>
-              </button>
+                {editingAlbum === album.id ? (
+                  <div className="p-4">
+                    <div className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && saveEdit()}
+                        className="flex-1 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={saveEdit}
+                        className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-700"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex">
+                    <button
+                      onClick={() => {
+                        onSelectAlbum(album);
+                        onClose();
+                      }}
+                      className="flex-1 text-left p-4 hover:bg-gray-50"
+                    >
+                      <div className="font-medium">{album.name}</div>
+                      <div className="text-sm text-gray-500">
+                        Created by {album.createdBy === currentUser?.email ? 'you' : album.createdBy}
+                      </div>
+                    </button>
+                    {album.createdBy === currentUser?.email && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startEditing(album);
+                        }}
+                        className="p-4 text-gray-400 hover:text-gray-600"
+                        title="Rename album"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         </div>

@@ -206,7 +206,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
     const touchDuration = Date.now() - touchStartTime.current;
     
     // Check if this was a tap (short duration, minimal movement)
-    if (touchDuration < 300 && e.touches.length === 0) {
+    if (touchDuration < 300 && e.changedTouches.length > 0) {
       const data = itemTouchData.current[item.id];
       if (data) {
         const distance = Math.sqrt(
@@ -215,7 +215,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
         );
         
         // If movement was minimal, treat as tap
-        if (distance < 10) {
+        if (distance < 20) { // Increased threshold for better mobile detection
           setSelectedItem(item.id);
           setShowSettings(true);
         }
