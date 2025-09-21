@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-react-app:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss init:*)",
+      "Bash(npm ls:*)",
+      "Bash(firebase login:*)",
+      "Bash(npx firebase login:*)",
+      "Bash(npm start)",
+      "Bash(ls:*)",
+      "Bash(./node_modules/.bin/firebase:*)",
+      "Bash(rm:*)"
+    ],
+    "deny": []
+  }
+}
