@@ -161,11 +161,20 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ album, fileInputRef, u
                 setSelectedPhoto(photo);
               }
             }}
+            onTouchEnd={(e) => {
+              e.preventDefault(); // Prevent ghost clicks
+              if (selectedPhoto?.id === photo.id) {
+                setSelectedPhoto(null);
+              } else {
+                setSelectedPhoto(photo);
+              }
+            }}
           >
             <img
               src={photo.thumbnailUrl}
               alt={photo.filename}
-              className="w-full h-48 object-cover rounded-lg shadow-md"
+              className="w-full h-48 object-cover rounded-lg shadow-md pointer-events-none select-none"
+              draggable={false}
             />
 
             {/* Desktop overlay controls - hidden on mobile */}
