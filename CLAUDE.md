@@ -76,3 +76,37 @@ npm run firebase:init          # Initialize Firebase in project
 - Deployed to: https://caquilina-veitch.github.io/Collage-Gallery
 - Authorized users are defined in ALLOWED_EMAILS array
 - All Firebase operations use explicit node_modules paths in package.json scripts
+
+## Recent UI Improvements (September 2025)
+
+### Changes Made:
+1. **Top Toolbar Reorganization**:
+   - Album name moved from floating elements to top toolbar (left of Gallery/Collage buttons)
+   - Upload Photos button moved from Gallery view to top toolbar (shows only in Gallery mode)
+   - Export button remains in top toolbar (shows only in Collage mode)
+
+2. **Sidebar Fixes**:
+   - Fixed overflow issues with proper containment (`overflow-hidden`, `flex-shrink-0`)
+   - Album creation section no longer leaks into main content
+
+3. **Gallery View Improvements**:
+   - Added photo selection on tap/click (shows selected with blue ring)
+   - Bottom toolbar appears when photo is selected with actions:
+     - Send to Collage / Remove from Collage
+     - Download
+
+4. **Collage View Improvements**:
+   - Settings panel converted from floating modal to fixed bottom toolbar
+   - Removed overlay background for better mobile experience
+   - Tap on photo shows settings in bottom toolbar (not floating window)
+
+### Deployment Notes:
+- **IMPORTANT**: GitHub Pages must be configured to serve from `gh-pages` branch, NOT master
+- The `gh-pages` branch contains only built files (created by `npm run deploy`)
+- The `master` branch contains source code
+- If deployment shows old version, check GitHub Settings → Pages → Source is set to `gh-pages`
+
+### Known State:
+- Upload functionality lifted to App.tsx and passed as props to GalleryView
+- File input ref and uploading state managed at App level
+- Bottom toolbars implemented for both Gallery (photo selection) and Collage (settings)
