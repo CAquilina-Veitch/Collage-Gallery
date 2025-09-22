@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { PrivateRoute } from './components/PrivateRoute';
@@ -14,6 +14,12 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
   const [viewMode, setViewMode] = useState<'gallery' | 'collage'>('gallery');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const triggerFileUpload = () => {
+    fileInputRef.current?.click();
+  };
 
   return (
     <HashRouter>
@@ -47,28 +53,42 @@ function App() {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
                           </button>
-                          
+
                           {selectedAlbum && (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setViewMode('gallery')}
-                                className={`px-4 py-2 rounded ${viewMode === 'gallery' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-                              >
-                                Gallery
-                              </button>
-                              <button
-                                onClick={() => setViewMode('collage')}
-                                className={`px-4 py-2 rounded ${viewMode === 'collage' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-                              >
-                                Collage
-                              </button>
-                            </div>
+                            <>
+                              <h2 className="text-xl font-semibold text-gray-800">{selectedAlbum.name}</h2>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => setViewMode('gallery')}
+                                  className={`px-4 py-2 rounded ${viewMode === 'gallery' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+                                >
+                                  Gallery
+                                </button>
+                                <button
+                                  onClick={() => setViewMode('collage')}
+                                  className={`px-4 py-2 rounded ${viewMode === 'collage' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+                                >
+                                  Collage
+                                </button>
+                              </div>
+                            </>
                           )}
                         </div>
 
-                        {selectedAlbum && viewMode === 'collage' && (
-                          <ExportButton album={selectedAlbum} />
-                        )}
+                        <div className="flex items-center gap-2">
+                          {selectedAlbum && viewMode === 'gallery' && (
+                            <button
+                              onClick={triggerFileUpload}
+                              disabled={uploading}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                            >
+                              {uploading ? 'Uploading...' : 'Upload Photos'}
+                            </button>
+                          )}
+                          {selectedAlbum && viewMode === 'collage' && (
+                            <ExportButton album={selectedAlbum} />
+                          )}
+                        </div>
                       </div>
                     </header>
 
@@ -76,7 +96,12 @@ function App() {
                     <main className="flex-1 overflow-auto">
                       {selectedAlbum ? (
                         viewMode === 'gallery' ? (
-                          <GalleryView album={selectedAlbum} />
+                          <GalleryView
+                            album={selectedAlbum}
+                            fileInputRef={fileInputRef}
+                            uploading={uploading}
+                            setUploading={setUploading}
+                          />
                         ) : (
                           <CollageView album={selectedAlbum} />
                         )

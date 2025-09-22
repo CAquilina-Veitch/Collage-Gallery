@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { collection, query, onSnapshot, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
@@ -8,13 +8,15 @@ import heic2any from 'heic2any';
 
 interface GalleryViewProps {
   album: Album;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  uploading: boolean;
+  setUploading: (uploading: boolean) => void;
 }
 
-export const GalleryView: React.FC<GalleryViewProps> = ({ album }) => {
+export const GalleryView: React.FC<GalleryViewProps> = ({ album, fileInputRef, uploading, setUploading }) => {
   const { currentUser } = useAuth();
   const [photos, setPhotos] = useState<Photo[]>([]);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
 
   useEffect(() => {
     if (!album) return;
@@ -134,35 +136,45 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ album }) => {
 
   return (
     <div className="p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-2xl font-bold">{album.name} - Gallery</h2>
-        <label className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer">
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleFileUpload}
-            className="hidden"
-            disabled={uploading}
-          />
-          {uploading ? 'Uploading...' : 'Upload Photos'}
-        </label>
-      </div>
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/*"
+        onChange={handleFileUpload}
+        className="hidden"
+        disabled={uploading}
+      />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {photos.map((photo) => (
-          <div key={photo.id} className="relative group">
+          <div
+            key={photo.id}
+            className={`relative group cursor-pointer ${
+              selectedPhoto?.id === photo.id ? 'ring-4 ring-blue-500 rounded-lg' : ''
+            }`}
+            onClick={() => {
+              if (selectedPhoto?.id === photo.id) {
+                setSelectedPhoto(null);
+              } else {
+                setSelectedPhoto(photo);
+              }
+            }}
+          >
             <img
               src={photo.thumbnailUrl}
               alt={photo.filename}
               className="w-full h-48 object-cover rounded-lg shadow-md"
             />
-            
-            {/* Overlay controls */}
-            <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex flex-col items-center justify-center gap-2">
+
+            {/* Desktop overlay controls - hidden on mobile */}
+            <div className="hidden md:flex absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex-col items-center justify-center gap-2">
               <button
-                onClick={() => toggleCollage(photo)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleCollage(photo);
+                }}
                 className={`px-3 py-1 rounded text-sm font-medium ${
                   photo.inCollage
                     ? 'bg-red-600 text-white hover:bg-red-700'
@@ -171,9 +183,12 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ album }) => {
               >
                 {photo.inCollage ? 'Remove from Collage' : 'Send to Collage'}
               </button>
-              
+
               <button
-                onClick={() => downloadPhoto(photo)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  downloadPhoto(photo);
+                }}
                 className="px-3 py-1 bg-gray-600 text-white rounded text-sm font-medium hover:bg-gray-700"
               >
                 Download
@@ -189,6 +204,47 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ album }) => {
           </div>
         ))}
       </div>
+
+      {/* Bottom toolbar for selected photo */}
+      {selectedPhoto && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-40 p-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-lg">Photo Actions</h3>
+              <button
+                onClick={() => setSelectedPhoto(null)}
+                className="text-gray-500 hover:text-gray-700 p-2 text-xl"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  toggleCollage(selectedPhoto);
+                  setSelectedPhoto(null);
+                }}
+                className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
+                  selectedPhoto.inCollage
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+              >
+                {selectedPhoto.inCollage ? 'Remove from Collage' : 'Send to Collage'}
+              </button>
+              <button
+                onClick={() => {
+                  downloadPhoto(selectedPhoto);
+                  setSelectedPhoto(null);
+                }}
+                className="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors"
+              >
+                Download
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

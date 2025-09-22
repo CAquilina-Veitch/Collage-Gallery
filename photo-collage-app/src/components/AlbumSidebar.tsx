@@ -106,13 +106,13 @@ export const AlbumSidebar: React.FC<AlbumSidebarProps> = ({
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-lg transform transition-transform duration-300 ease-in-out overflow-hidden lg:relative lg:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="h-full flex flex-col">
+        <div className="h-full flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="p-4 border-b flex items-center justify-between">
+          <div className="p-4 border-b flex items-center justify-between flex-shrink-0">
             <h2 className="text-xl font-semibold">Albums</h2>
             <button
               onClick={onClose}
@@ -125,7 +125,7 @@ export const AlbumSidebar: React.FC<AlbumSidebarProps> = ({
           </div>
 
           {/* Create new album */}
-          <div className="p-4 border-b">
+          <div className="p-4 border-b flex-shrink-0">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -133,12 +133,12 @@ export const AlbumSidebar: React.FC<AlbumSidebarProps> = ({
                 onChange={(e) => setNewAlbumName(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && createAlbum()}
                 placeholder="New album name"
-                className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 min-w-0 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 onClick={createAlbum}
                 disabled={isCreating || !newAlbumName.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
               >
                 Create
               </button>
@@ -146,7 +146,7 @@ export const AlbumSidebar: React.FC<AlbumSidebarProps> = ({
           </div>
 
           {/* Albums list */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto min-h-0">
             {albums.map((album) => (
               <div
                 key={album.id}

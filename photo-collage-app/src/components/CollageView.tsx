@@ -238,12 +238,6 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
 
   return (
     <div className="relative h-screen bg-gray-100 overflow-hidden">
-      <div className="fixed top-4 left-4 z-10">
-        <h2 className="text-2xl font-bold bg-white px-4 py-2 rounded shadow">
-          {album.name} - Collage
-        </h2>
-      </div>
-
       {/* Canvas Controls */}
       <div className="fixed bottom-4 left-4 z-10 flex gap-2">
         <button
@@ -331,18 +325,11 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
         </div>
       </div>
 
-      {/* Settings Menu */}
+      {/* Bottom Toolbar for Photo Settings */}
       {showSettings && selectedItem && (
-        <>
-          {/* Mobile overlay */}
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
-            onClick={() => setShowSettings(false)}
-          />
-          
-          {/* Settings Panel */}
-          <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-xl shadow-xl z-40 max-h-[70vh] overflow-y-auto md:top-20 md:bottom-auto md:right-4 md:left-auto md:w-80 md:max-w-[90vw] md:rounded-lg md:max-h-none">
-            <div className="flex justify-between items-center p-4 border-b md:p-6 md:mb-4 md:border-b-0">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-40 max-h-[60vh] overflow-y-auto">
+          <div className="p-4">
+            <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-lg">Photo Settings</h3>
               <button
                 onClick={() => setShowSettings(false)}
@@ -351,8 +338,8 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
                 ✕
               </button>
             </div>
-            
-            <div className="p-4 md:p-0 md:px-6">
+
+            <div className="space-y-4">
 
           {(() => {
             const item = collageItems.find(i => i.id === selectedItem);
@@ -360,18 +347,18 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
 
             return (
               <>
-                <div className="mb-6">
-                  <label className="block text-sm font-medium mb-3">Display Mode</label>
-                  <div className="flex gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Display Mode</label>
+                  <div className="flex gap-2">
                     <button
                       onClick={() => updateCollageItem(item.id, { mode: 'polaroid' })}
-                      className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${item.mode === 'polaroid' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                      className={`flex-1 px-3 py-2 rounded-lg font-medium transition-colors ${item.mode === 'polaroid' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                     >
                       Polaroid
                     </button>
                     <button
                       onClick={() => updateCollageItem(item.id, { mode: 'plain' })}
-                      className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${item.mode === 'plain' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                      className={`flex-1 px-3 py-2 rounded-lg font-medium transition-colors ${item.mode === 'plain' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                     >
                       Plain
                     </button>
@@ -379,20 +366,20 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
                 </div>
 
                 {item.mode === 'polaroid' && (
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium mb-3">Caption</label>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Caption</label>
                     <input
                       type="text"
                       value={item.captionText || ''}
                       onChange={(e) => updateCollageItem(item.id, { captionText: e.target.value })}
-                      className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
                       placeholder="Add a caption..."
                     />
                   </div>
                 )}
 
-                <div className="mb-6">
-                  <label className="block text-sm font-medium mb-3">Size: {(item.scale || 1).toFixed(2)}x</label>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Size: {(item.scale || 1).toFixed(2)}x</label>
                   <input
                     type="range"
                     min="0.5"
@@ -400,12 +387,12 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
                     step="0.1"
                     value={item.scale || 1}
                     onChange={(e) => updateCollageItem(item.id, { scale: parseFloat(e.target.value) })}
-                    className="w-full h-8 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                   />
                 </div>
 
-                <div className="mb-6">
-                  <label className="block text-sm font-medium mb-3">Rotation: {item.rotation || 0}°</label>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Rotation: {item.rotation || 0}°</label>
                   <input
                     type="range"
                     min="-45"
@@ -413,20 +400,20 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
                     step="5"
                     value={item.rotation || 0}
                     onChange={(e) => updateCollageItem(item.id, { rotation: parseInt(e.target.value) })}
-                    className="w-full h-8 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                   />
                 </div>
 
-                <div className="mb-6 flex gap-3">
+                <div className="flex gap-2">
                   <button
                     onClick={() => bringForward(item)}
-                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
+                    className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
                   >
                     Bring Forward
                   </button>
                   <button
                     onClick={() => sendBackward(item)}
-                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
+                    className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
                   >
                     Send Back
                   </button>
@@ -434,7 +421,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
 
                 <button
                   onClick={() => deleteFromCollage(item)}
-                  className="w-full px-4 py-4 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors mb-4 md:mb-0"
+                  className="w-full px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors"
                 >
                   Remove from Collage
                 </button>
@@ -443,7 +430,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
           })()}
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
