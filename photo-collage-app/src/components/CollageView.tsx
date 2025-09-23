@@ -255,7 +255,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
 
   return (
     <>
-      <div className="relative h-screen bg-gray-100 overflow-hidden">
+      <div className="absolute inset-0 bg-gray-100 overflow-hidden">
       {/* Canvas Controls */}
       <div className="fixed bottom-4 left-4 z-10 flex gap-2">
         <button
@@ -343,15 +343,17 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
       {/* Bottom Toolbar for Photo Settings - Rendered to document body via Portal */}
       {showSettings && selectedItem && ReactDOM.createPortal(
         <div
-          className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-300 shadow-2xl max-h-[50vh] overflow-y-auto"
+          className="bg-white border-t-2 border-gray-300 shadow-2xl overflow-y-auto"
           style={{
             position: 'fixed',
             bottom: 0,
             left: 0,
             right: 0,
-            width: '100vw',
+            width: '100%',
+            maxHeight: '40vh',
             zIndex: 99999,
-            backgroundColor: 'white'
+            backgroundColor: 'white',
+            boxShadow: '0 -4px 20px rgba(0,0,0,0.15)'
           }}>
           <div className="p-4">
             <div className="flex justify-between items-center mb-4">
