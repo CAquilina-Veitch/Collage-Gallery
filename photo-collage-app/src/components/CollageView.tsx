@@ -253,7 +253,8 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
   };
 
   return (
-    <div className="relative h-screen bg-gray-100 overflow-hidden">
+    <>
+      <div className="relative h-screen bg-gray-100 overflow-hidden">
       {/* Canvas Controls */}
       <div className="fixed bottom-4 left-4 z-10 flex gap-2">
         <button
@@ -336,10 +337,11 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
           ))}
         </div>
       </div>
+      </div>
 
-      {/* Bottom Toolbar for Photo Settings */}
+      {/* Bottom Toolbar for Photo Settings - True fixed overlay outside canvas */}
       {showSettings && selectedItem && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-40 max-h-[60vh] overflow-y-auto">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-300 shadow-2xl z-[100] max-h-[50vh] overflow-y-auto">
           <div className="p-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-lg">Photo Settings</h3>
@@ -460,6 +462,6 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
