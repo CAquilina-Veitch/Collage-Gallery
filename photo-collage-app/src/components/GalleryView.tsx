@@ -151,18 +151,11 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ album, fileInputRef, u
         {photos.map((photo) => (
           <div
             key={photo.id}
-            className={`relative group cursor-pointer ${
+            className={`relative group cursor-pointer select-none ${
               selectedPhoto?.id === photo.id ? 'ring-4 ring-blue-500 rounded-lg' : ''
             }`}
+            style={{ touchAction: 'manipulation' }}
             onClick={() => {
-              if (selectedPhoto?.id === photo.id) {
-                setSelectedPhoto(null);
-              } else {
-                setSelectedPhoto(photo);
-              }
-            }}
-            onTouchEnd={(e) => {
-              e.preventDefault(); // Prevent ghost clicks
               if (selectedPhoto?.id === photo.id) {
                 setSelectedPhoto(null);
               } else {
@@ -173,7 +166,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ album, fileInputRef, u
             <img
               src={photo.thumbnailUrl}
               alt={photo.filename}
-              className="w-full h-48 object-cover rounded-lg shadow-md pointer-events-none select-none"
+              className="w-full h-48 object-cover rounded-lg shadow-md select-none"
               draggable={false}
             />
 
