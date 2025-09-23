@@ -16,6 +16,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [canvasTransform, setCanvasTransform] = useState({ x: 0, y: 0, scale: 1 });
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
   const canvasRef = useRef<HTMLDivElement>(null);
   const isDraggingCanvas = useRef(false);
   const lastTouchPos = useRef({ x: 0, y: 0 });
@@ -23,6 +24,13 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
   const activeItemId = useRef<string | null>(null);
   const touchStartTime = useRef<number>(0);
   const itemTouchData = useRef<{ [key: string]: { startTime: number; startPos: { x: number; y: number }; scale: number; rotation: number } }>({});
+
+  // Debug helper
+  const addDebug = (msg: string) => {
+    const timestamp = new Date().toISOString().slice(11, 19);
+    setDebugInfo(prev => [...prev.slice(-4), `${timestamp}: ${msg}`]);
+    console.log(`[CollageDebug] ${msg}`);
+  };
 
   useEffect(() => {
     if (!album) return;
@@ -149,6 +157,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
     e.stopPropagation();
     activeItemId.current = item.id;
     touchStartTime.current = Date.now();
+    addDebug(`Touch START on photo ${item.id.slice(0, 8)}`);
 
     itemTouchData.current[item.id] = {
       startTime: Date.now(),
@@ -204,22 +213,29 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
 
   const handleItemEnd = (e: React.TouchEvent, item: CollagePhotoItem) => {
     const touchDuration = Date.now() - touchStartTime.current;
-    
+    addDebug(`Touch END on ${item.id.slice(0, 8)}, duration: ${touchDuration}ms`);
+
     // Check if this was a tap (short duration, minimal movement)
-    if (touchDuration < 300 && e.changedTouches.length > 0) {
+    if (touchDuration < 500 && e.changedTouches.length > 0) { // Increased time threshold
       const data = itemTouchData.current[item.id];
       if (data) {
         const distance = Math.sqrt(
           Math.pow(e.changedTouches[0].clientX - data.startPos.x, 2) +
           Math.pow(e.changedTouches[0].clientY - data.startPos.y, 2)
         );
-        
+        addDebug(`Movement distance: ${distance.toFixed(1)}px`);
+
         // If movement was minimal, treat as tap
-        if (distance < 20) { // Increased threshold for better mobile detection
+        if (distance < 30) { // Increased threshold for better mobile detection
+          addDebug(`✓ TAP DETECTED! Opening settings for ${item.id.slice(0, 8)}`);
           setSelectedItem(item.id);
           setShowSettings(true);
+        } else {
+          addDebug(`✗ Not a tap - moved too much (${distance.toFixed(1)}px)`);
         }
       }
+    } else {
+      addDebug(`✗ Not a tap - too long (${touchDuration}ms)`);
     }
 
     activeItemId.current = null;
@@ -263,7 +279,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
       {/* Collage Canvas */}
       <div 
         ref={canvasRef}
-        className="relative w-full h-full touch-none"
+        className="relative w-full h-full"
         onTouchStart={handleCanvasStart}
         onTouchMove={handleCanvasMove}
         onTouchEnd={handleCanvasEnd}
@@ -293,17 +309,13 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
               onTouchStart={(e) => handleItemStart(e, item)}
               onTouchMove={(e) => handleItemMove(e, item)}
               onTouchEnd={(e) => handleItemEnd(e, item)}
-              onClick={() => {
-                setSelectedItem(item.id);
-                setShowSettings(true);
-              }}
             >
               {item.mode === 'polaroid' ? (
                 <div className="bg-white p-4 shadow-2xl">
                   <img
                     src={item.photo.url}
                     alt={item.photo.filename}
-                    className="w-64 h-64 object-cover pointer-events-none"
+                    className="w-64 h-64 object-cover"
                     draggable={false}
                   />
                   {item.captionText && (
@@ -316,7 +328,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
                 <img
                   src={item.photo.url}
                   alt={item.photo.filename}
-                  className="w-64 h-64 object-cover shadow-lg pointer-events-none"
+                  className="w-64 h-64 object-cover shadow-lg"
                   draggable={false}
                 />
               )}
@@ -429,6 +441,22 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
             );
           })()}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Debug Overlay - only in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed top-20 right-4 bg-black bg-opacity-85 text-green-400 p-3 font-mono text-xs z-50 rounded max-w-sm">
+          <div className="font-bold mb-1 text-yellow-400">Touch Debug:</div>
+          {debugInfo.map((info, i) => (
+            <div key={i} className="text-green-300">{info}</div>
+          ))}
+          <div className="mt-2 text-cyan-400">
+            Selected: {selectedItem ? selectedItem.slice(0, 8) : 'none'}
+          </div>
+          <div className="text-cyan-400">
+            Settings: {showSettings ? 'OPEN' : 'closed'}
           </div>
         </div>
       )}
