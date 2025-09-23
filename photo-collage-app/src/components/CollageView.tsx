@@ -255,7 +255,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
 
   return (
     <>
-      <div className="absolute inset-0 bg-gray-100 overflow-hidden">
+      <div className="relative h-full bg-gray-100 overflow-hidden">
       {/* Canvas Controls */}
       <div className="fixed bottom-4 left-4 z-10 flex gap-2">
         <button
@@ -290,6 +290,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
         onMouseUp={handleCanvasEnd}
       >
         <div
+          id="collage-export-canvas"
           className="relative"
           style={{
             transform: `translate(${canvasTransform.x}px, ${canvasTransform.y}px) scale(${canvasTransform.scale})`,

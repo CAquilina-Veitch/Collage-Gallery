@@ -9,6 +9,7 @@ interface ExportButtonProps {
 
 export const ExportButton: React.FC<ExportButtonProps> = ({ album }) => {
   const [isExporting, setIsExporting] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
   const [showSelectionTool, setShowSelectionTool] = useState(false);
   const [selectionRect, setSelectionRect] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const [isSelecting, setIsSelecting] = useState(false);
@@ -16,9 +17,12 @@ export const ExportButton: React.FC<ExportButtonProps> = ({ album }) => {
 
   const exportFullCollage = async (format: 'image' | 'pdf') => {
     setIsExporting(true);
-    
+
     try {
-      const collageElement = document.querySelector('.collage-canvas') || document.querySelector('main');
+      // Target the actual collage canvas with images
+      const collageElement = document.getElementById('collage-export-canvas') ||
+                            document.querySelector('#collage-export-canvas') ||
+                            document.querySelector('main');
       if (!collageElement) {
         throw new Error('Collage element not found');
       }
@@ -26,6 +30,10 @@ export const ExportButton: React.FC<ExportButtonProps> = ({ album }) => {
       const canvas = await html2canvas(collageElement as HTMLElement, {
         backgroundColor: '#f3f4f6',
         scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        imageTimeout: 15000
       });
 
       if (format === 'image') {
@@ -69,6 +77,9 @@ export const ExportButton: React.FC<ExportButtonProps> = ({ album }) => {
         y: selectionRect.y,
         width: selectionRect.width,
         height: selectionRect.height,
+        useCORS: true,
+        allowTaint: false,
+        imageTimeout: 15000
       });
 
       if (format === 'image') {
@@ -133,7 +144,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({ album }) => {
     <>
       <div className="relative">
         <button
-          onClick={() => setShowSelectionTool(false)}
+          onClick={() => setShowDropdown(!showDropdown)}
           disabled={isExporting}
           className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
         >
@@ -141,23 +152,32 @@ export const ExportButton: React.FC<ExportButtonProps> = ({ album }) => {
         </button>
 
         {/* Export Options Dropdown */}
-        {!showSelectionTool && (
+        {showDropdown && !showSelectionTool && (
           <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
             <button
-              onClick={() => exportFullCollage('image')}
+              onClick={() => {
+                exportFullCollage('image');
+                setShowDropdown(false);
+              }}
               className="block w-full text-left px-4 py-2 hover:bg-gray-100"
             >
               Export as Image
             </button>
             <button
-              onClick={() => exportFullCollage('pdf')}
+              onClick={() => {
+                exportFullCollage('pdf');
+                setShowDropdown(false);
+              }}
               className="block w-full text-left px-4 py-2 hover:bg-gray-100"
             >
               Export as PDF
             </button>
             <hr className="my-1" />
             <button
-              onClick={() => setShowSelectionTool(true)}
+              onClick={() => {
+                setShowSelectionTool(true);
+                setShowDropdown(false);
+              }}
               className="block w-full text-left px-4 py-2 hover:bg-gray-100"
             >
               Select Area to Export

@@ -110,3 +110,61 @@ npm run firebase:init          # Initialize Firebase in project
 - Upload functionality lifted to App.tsx and passed as props to GalleryView
 - File input ref and uploading state managed at App level
 - Bottom toolbars implemented for both Gallery (photo selection) and Collage (settings)
+
+## Latest Fixes (December 2025)
+
+### Mobile Touch Issues Resolved:
+1. **Gallery View Touch Detection**:
+   - Removed conflicting event handlers and pointer-events-none
+   - Added `touch-action: manipulation` for better mobile response
+   - Photos now properly selectable on mobile devices
+
+2. **Collage View Touch Detection**:
+   - Removed `touch-none` class that was blocking all touch events
+   - Fixed pointer-events on images
+   - Added debug overlay for touch event monitoring (can be toggled)
+
+3. **Bottom Toolbar Positioning Fix**:
+   - Used React Portal to render toolbar outside component tree
+   - Toolbar now properly fixed to device screen (not canvas)
+   - Renders directly to document.body with position:fixed
+   - Implementation in CollageView.tsx using `ReactDOM.createPortal`
+
+4. **Export Functionality**:
+   - Export button now has proper dropdown toggle
+   - Dropdown closes after selecting export option
+   - Canvas properly targeted with `id="collage-export-canvas"`
+   - Note: CrossOrigin attribute removed from images due to Firebase Storage CORS limitations
+   - Export uses html2canvas with `useCORS: true` and `allowTaint: false`
+
+### Critical Implementation Details:
+
+#### React Portal for Fixed Bottom Toolbar:
+```jsx
+{showSettings && selectedItem && ReactDOM.createPortal(
+  <div style={{
+    position: 'fixed',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 99999
+  }}>
+    {/* Settings content */}
+  </div>,
+  document.body
+)}
+```
+
+#### CollageView Positioning:
+- Changed from `absolute inset-0` to `relative h-full` to prevent covering top toolbar
+- Canvas has `id="collage-export-canvas"` for export targeting
+
+### Batch Files Created:
+- `dev.bat` - Start development server
+- `deploy.bat` - Full deployment with git checks
+- `deploy-quick.bat` - Quick deployment without prompts
+
+### Important NPM Note:
+- NPM commands often timeout when run through Claude
+- Always provide commands for user to run manually
+- Do not attempt to run npm commands directly in production deployments
