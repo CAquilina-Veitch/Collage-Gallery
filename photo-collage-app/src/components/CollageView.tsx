@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Album, Photo, CollageItem } from '../types';
@@ -339,9 +340,19 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
       </div>
       </div>
 
-      {/* Bottom Toolbar for Photo Settings - True fixed overlay outside canvas */}
-      {showSettings && selectedItem && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-300 shadow-2xl z-[100] max-h-[50vh] overflow-y-auto">
+      {/* Bottom Toolbar for Photo Settings - Rendered to document body via Portal */}
+      {showSettings && selectedItem && ReactDOM.createPortal(
+        <div
+          className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-300 shadow-2xl max-h-[50vh] overflow-y-auto"
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            width: '100vw',
+            zIndex: 99999,
+            backgroundColor: 'white'
+          }}>
           <div className="p-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-lg">Photo Settings</h3>
@@ -444,12 +455,20 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
           })()}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body // Render directly to document body, outside React tree!
       )}
 
-      {/* Debug Overlay - only in development */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="fixed top-20 right-4 bg-black bg-opacity-85 text-green-400 p-3 font-mono text-xs z-50 rounded max-w-sm">
+      {/* Debug Overlay - only in development, also via Portal */}
+      {process.env.NODE_ENV === 'development' && ReactDOM.createPortal(
+        <div
+          className="fixed top-20 right-4 bg-black bg-opacity-85 text-green-400 p-3 font-mono text-xs rounded max-w-sm"
+          style={{
+            position: 'fixed',
+            top: '80px',
+            right: '16px',
+            zIndex: 99998
+          }}>
           <div className="font-bold mb-1 text-yellow-400">Touch Debug:</div>
           {debugInfo.map((info, i) => (
             <div key={i} className="text-green-300">{info}</div>
@@ -460,7 +479,8 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
           <div className="text-cyan-400">
             Settings: {showSettings ? 'OPEN' : 'closed'}
           </div>
-        </div>
+        </div>,
+        document.body // Debug overlay also rendered to body
       )}
     </>
   );
