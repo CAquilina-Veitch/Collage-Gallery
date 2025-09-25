@@ -18,8 +18,11 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [canvasTransform, setCanvasTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
+  // Local state for smooth dragging
+  const [localItemPositions, setLocalItemPositions] = useState<{ [key: string]: { x: number; y: number; scale: number; rotation: number } }>({});
   const canvasRef = useRef<HTMLDivElement>(null);
   const isDraggingCanvas = useRef(false);
+  const isDraggingItem = useRef(false);
   const lastTouchPos = useRef({ x: 0, y: 0 });
   const lastPinchDistance = useRef(0);
   const activeItemId = useRef<string | null>(null);
@@ -176,18 +179,29 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
 
   const handleItemMove = (e: React.TouchEvent, item: CollagePhotoItem) => {
     e.stopPropagation();
-    
+    e.preventDefault();
+
     if (!itemTouchData.current[item.id] || activeItemId.current !== item.id) return;
 
+    isDraggingItem.current = true;
+
     if (e.touches.length === 1) {
-      // Single finger drag
+      // Single finger drag - update local state immediately for smooth movement
       const touch = e.touches[0];
       const rect = canvasRef.current?.getBoundingClientRect();
       if (rect) {
         const x = (touch.clientX - rect.left - canvasTransform.x) / canvasTransform.scale;
         const y = (touch.clientY - rect.top - canvasTransform.y) / canvasTransform.scale;
-        
-        updateCollageItem(item.id, { x: x - 128, y: y - 128 }); // 128 = half of 256px image
+
+        // Update local state for immediate visual feedback
+        setLocalItemPositions(prev => ({
+          ...prev,
+          [item.id]: {
+            ...prev[item.id],
+            x: x - 128, // 128 = half of 256px image
+            y: y - 128
+          }
+        }));
       }
     } else if (e.touches.length === 2) {
       // Two finger pinch and rotate
@@ -201,10 +215,15 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
       const rotationChange = currentAngle - data.rotation;
       const newRotation = (item.rotation || 0) + rotationChange;
 
-      updateCollageItem(item.id, { 
-        scale: newScale,
-        rotation: newRotation
-      });
+      // Update local state for immediate visual feedback
+      setLocalItemPositions(prev => ({
+        ...prev,
+        [item.id]: {
+          ...prev[item.id],
+          scale: newScale,
+          rotation: newRotation
+        }
+      }));
 
       // Update reference values
       data.scale = currentDistance;
@@ -216,8 +235,26 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
     const touchDuration = Date.now() - touchStartTime.current;
     addDebug(`Touch END on ${item.id.slice(0, 8)}, duration: ${touchDuration}ms`);
 
-    // Check if this was a tap (short duration, minimal movement)
-    if (touchDuration < 500 && e.changedTouches.length > 0) { // Increased time threshold
+    // Save to Firestore if item was dragged
+    if (isDraggingItem.current && localItemPositions[item.id]) {
+      const localPos = localItemPositions[item.id];
+      updateCollageItem(item.id, {
+        x: localPos.x,
+        y: localPos.y,
+        scale: localPos.scale,
+        rotation: localPos.rotation
+      });
+
+      // Clear local position since it's now in Firestore
+      setLocalItemPositions(prev => {
+        const newPos = { ...prev };
+        delete newPos[item.id];
+        return newPos;
+      });
+    }
+
+    // Check if this was a tap (short duration, minimal movement) and not a drag
+    if (!isDraggingItem.current && touchDuration < 500 && e.changedTouches.length > 0) {
       const data = itemTouchData.current[item.id];
       if (data) {
         const distance = Math.sqrt(
@@ -227,7 +264,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
         addDebug(`Movement distance: ${distance.toFixed(1)}px`);
 
         // If movement was minimal, treat as tap
-        if (distance < 30) { // Increased threshold for better mobile detection
+        if (distance < 30) {
           addDebug(`✓ TAP DETECTED! Opening settings for ${item.id.slice(0, 8)}`);
           setSelectedItem(item.id);
           setShowSettings(true);
@@ -235,11 +272,14 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
           addDebug(`✗ Not a tap - moved too much (${distance.toFixed(1)}px)`);
         }
       }
+    } else if (isDraggingItem.current) {
+      addDebug(`✗ Not a tap - was dragging`);
     } else {
       addDebug(`✗ Not a tap - too long (${touchDuration}ms)`);
     }
 
     activeItemId.current = null;
+    isDraggingItem.current = false;
     delete itemTouchData.current[item.id];
   };
 
@@ -253,35 +293,28 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
     updateCollageItem(item.id, { zIndex: minZ - 1 });
   };
 
+  // Helper to get current item position (local or server state)
+  const getItemPosition = (item: CollagePhotoItem) => {
+    const localPos = localItemPositions[item.id];
+    return {
+      x: localPos?.x ?? item.x ?? 50,
+      y: localPos?.y ?? item.y ?? 50,
+      scale: localPos?.scale ?? item.scale ?? 1,
+      rotation: localPos?.rotation ?? item.rotation ?? 0
+    };
+  };
+
   return (
     <>
-      <div className="relative h-full bg-gray-100 overflow-hidden">
-      {/* Canvas Controls */}
-      <div className="fixed bottom-4 left-4 z-10 flex gap-2">
-        <button
-          onClick={() => setCanvasTransform(prev => ({ ...prev, scale: Math.min(3, prev.scale * 1.2) }))}
-          className="bg-white p-2 rounded shadow"
-        >
-          +
-        </button>
-        <button
-          onClick={() => setCanvasTransform(prev => ({ ...prev, scale: Math.max(0.5, prev.scale / 1.2) }))}
-          className="bg-white p-2 rounded shadow"
-        >
-          -
-        </button>
-        <button
-          onClick={() => setCanvasTransform({ x: 0, y: 0, scale: 1 })}
-          className="bg-white p-2 rounded shadow"
-        >
-          Reset
-        </button>
-      </div>
-
-      {/* Collage Canvas */}
-      <div 
+      {/* Full-screen canvas container */}
+      <div
         ref={canvasRef}
-        className="relative w-full h-full"
+        className="absolute inset-0 bg-gray-100 overflow-hidden select-none"
+        style={{
+          touchAction: 'none', // Prevent default touch behaviors
+          userSelect: 'none',
+          WebkitUserSelect: 'none'
+        }}
         onTouchStart={handleCanvasStart}
         onTouchMove={handleCanvasMove}
         onTouchEnd={handleCanvasEnd}
@@ -289,56 +322,86 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
         onMouseMove={handleCanvasMove}
         onMouseUp={handleCanvasEnd}
       >
+        {/* Infinite scrollable canvas */}
         <div
           id="collage-export-canvas"
           className="relative"
           style={{
             transform: `translate(${canvasTransform.x}px, ${canvasTransform.y}px) scale(${canvasTransform.scale})`,
             transformOrigin: '0 0',
-            width: '2000px',
-            height: '2000px',
+            width: '100vw',
+            height: '100vh',
+            minWidth: '2000px',
+            minHeight: '2000px',
+            willChange: 'transform'
           }}
         >
-          {collageItems.map((item) => (
-            <div
-              key={item.id}
-              className="absolute cursor-pointer"
-              style={{
-                left: `${item.x || 50}px`,
-                top: `${item.y || 50}px`,
-                transform: `rotate(${item.rotation || 0}deg) scale(${item.scale || 1})`,
-                zIndex: item.zIndex,
-              }}
-              onTouchStart={(e) => handleItemStart(e, item)}
-              onTouchMove={(e) => handleItemMove(e, item)}
-              onTouchEnd={(e) => handleItemEnd(e, item)}
-            >
-              {item.mode === 'polaroid' ? (
-                <div className="bg-white p-4 shadow-2xl">
+          {collageItems.map((item) => {
+            const position = getItemPosition(item);
+            return (
+              <div
+                key={item.id}
+                className="absolute cursor-pointer"
+                style={{
+                  left: `${position.x}px`,
+                  top: `${position.y}px`,
+                  transform: `rotate(${position.rotation}deg) scale(${position.scale})`,
+                  zIndex: item.zIndex,
+                  willChange: 'transform',
+                  touchAction: 'none'
+                }}
+                onTouchStart={(e) => handleItemStart(e, item)}
+                onTouchMove={(e) => handleItemMove(e, item)}
+                onTouchEnd={(e) => handleItemEnd(e, item)}
+              >
+                {item.mode === 'polaroid' ? (
+                  <div className="bg-white p-4 shadow-2xl">
+                    <img
+                      src={item.photo.url}
+                      alt={item.photo.filename}
+                      className="w-64 h-64 object-cover"
+                      draggable={false}
+                    />
+                    {item.captionText && (
+                      <p className="mt-2 text-center text-gray-800">
+                        {item.captionText}
+                      </p>
+                    )}
+                  </div>
+                ) : (
                   <img
                     src={item.photo.url}
                     alt={item.photo.filename}
-                    className="w-64 h-64 object-cover"
+                    className="w-64 h-64 object-cover shadow-lg"
                     draggable={false}
                   />
-                  {item.captionText && (
-                    <p className="mt-2 text-center text-gray-800">
-                      {item.captionText}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <img
-                  src={item.photo.url}
-                  alt={item.photo.filename}
-                  className="w-64 h-64 object-cover shadow-lg"
-                  draggable={false}
-                />
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
+
+      {/* Floating zoom controls */}
+      <div className="fixed bottom-4 left-4 z-50 flex gap-2">
+        <button
+          onClick={() => setCanvasTransform(prev => ({ ...prev, scale: Math.min(3, prev.scale * 1.2) }))}
+          className="bg-white p-3 rounded-full shadow-lg hover:shadow-xl transition-shadow text-lg font-bold"
+        >
+          +
+        </button>
+        <button
+          onClick={() => setCanvasTransform(prev => ({ ...prev, scale: Math.max(0.5, prev.scale / 1.2) }))}
+          className="bg-white p-3 rounded-full shadow-lg hover:shadow-xl transition-shadow text-lg font-bold"
+        >
+          −
+        </button>
+        <button
+          onClick={() => setCanvasTransform({ x: 0, y: 0, scale: 1 })}
+          className="bg-white px-3 py-2 rounded-full shadow-lg hover:shadow-xl transition-shadow text-sm font-medium"
+        >
+          Reset
+        </button>
       </div>
 
       {/* Bottom Toolbar for Photo Settings - Rendered to document body via Portal */}

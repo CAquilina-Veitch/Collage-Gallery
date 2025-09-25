@@ -93,7 +93,7 @@ function App() {
                     </header>
 
                     {/* Content Area */}
-                    <main className="flex-1 overflow-auto">
+                    <main className={`flex-1 ${viewMode === 'collage' ? 'overflow-hidden' : 'overflow-auto'}`}>
                       {selectedAlbum ? (
                         viewMode === 'gallery' ? (
                           <GalleryView
