@@ -168,3 +168,4 @@ npm run firebase:init          # Initialize Firebase in project
 - NPM commands often timeout when run through Claude
 - Always provide commands for user to run manually
 - Do not attempt to run npm commands directly in production deployments
+- this is for use on mobile as the main platform

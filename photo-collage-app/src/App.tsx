@@ -30,7 +30,7 @@ function App() {
             path="/"
             element={
               <PrivateRoute>
-                <div className="flex h-screen bg-gray-50">
+                <div className="h-screen bg-gray-50" style={{ height: '100vh', overflow: 'hidden', position: 'relative' }}>
                   {/* Sidebar */}
                   <AlbumSidebar
                     isOpen={sidebarOpen}
@@ -39,11 +39,23 @@ function App() {
                     onSelectAlbum={setSelectedAlbum}
                   />
 
-                  {/* Main Content */}
-                  <div className="flex-1 flex flex-col">
-                    {/* Header */}
-                    <header className="bg-white shadow-sm border-b px-4 py-3">
-                      <div className="flex items-center justify-between">
+                  {/* Overlay Header - Floating over content */}
+                  <header
+                    className="px-4 py-3 flex-shrink-0"
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: '64px',
+                      background: 'rgba(255, 255, 255, 0.85)',
+                      backdropFilter: 'blur(10px)',
+                      WebkitBackdropFilter: 'blur(10px)',
+                      borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+                      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+                      zIndex: 1000
+                    }}>
+                      <div className="flex items-center justify-between h-full">
                         <div className="flex items-center gap-4">
                           <button
                             onClick={() => setSidebarOpen(true)}
@@ -92,8 +104,14 @@ function App() {
                       </div>
                     </header>
 
-                    {/* Content Area */}
-                    <main className={`flex-1 ${viewMode === 'collage' ? 'overflow-hidden' : 'overflow-auto'}`}>
+                  {/* Main Content - Full height */}
+                  <main
+                    className="w-full h-full"
+                    style={{
+                      height: '100vh',
+                      overflow: viewMode === 'collage' ? 'hidden' : 'auto'
+                    }}
+                  >
                       {selectedAlbum ? (
                         viewMode === 'gallery' ? (
                           <GalleryView
@@ -103,15 +121,16 @@ function App() {
                             setUploading={setUploading}
                           />
                         ) : (
-                          <CollageView album={selectedAlbum} />
+                          <div style={{ height: '100%', width: '100%' }}>
+                            <CollageView album={selectedAlbum} />
+                          </div>
                         )
                       ) : (
                         <div className="flex items-center justify-center h-full text-gray-500">
                           <p>Select an album to get started</p>
                         </div>
                       )}
-                    </main>
-                  </div>
+                  </main>
                 </div>
               </PrivateRoute>
             }

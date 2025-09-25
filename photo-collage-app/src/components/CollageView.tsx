@@ -16,6 +16,19 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
   const [collageItems, setCollageItems] = useState<CollagePhotoItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+
+  // Debug effect to monitor state changes
+  useEffect(() => {
+    console.log('[STATE CHANGE] Settings panel state:', { selectedItem, showSettings });
+    // Also log DOM state
+    const portalRoot = document.getElementById('collage-settings-portal');
+    if (!portalRoot) {
+      console.log('[PORTAL] Creating portal root element');
+      const div = document.createElement('div');
+      div.id = 'collage-settings-portal';
+      document.body.appendChild(div);
+    }
+  }, [selectedItem, showSettings]);
   const [canvasTransform, setCanvasTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
   // Local state for smooth dragging
@@ -280,11 +293,20 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
         );
         addDebug(`Movement distance: ${distance.toFixed(1)}px`);
 
-        // If movement was minimal, treat as tap
-        if (distance < 30) {
+        // If movement was minimal, treat as tap (increased threshold for mobile)
+        if (distance < 50) {
           addDebug(`✓ TAP DETECTED! Opening settings for ${item.id.slice(0, 8)}`);
+          console.log('[TAP] About to set states:', { itemId: item.id, willShowSettings: true });
           setSelectedItem(item.id);
           setShowSettings(true);
+          // Force immediate state check
+          setTimeout(() => {
+            console.log('[TAP] State after update:', {
+              selectedItem: item.id,
+              showSettings: true,
+              shouldRenderPortal: true
+            });
+          }, 0);
         } else {
           addDebug(`✗ Not a tap - moved too much (${distance.toFixed(1)}px)`);
         }
@@ -323,12 +345,36 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
 
   return (
     <>
+      {/* Always-visible selection indicator below header */}
+      <div
+        style={{
+          position: 'fixed',
+          top: '80px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 99999,
+          padding: '8px 16px',
+          borderRadius: '20px',
+          backgroundColor: selectedItem ? '#10B981' : '#EF4444',
+          color: 'white',
+          fontSize: '14px',
+          fontWeight: 'bold',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          pointerEvents: 'none'
+        }}
+      >
+        {selectedItem ? `Photo Selected: ${selectedItem.slice(0, 8)}` : 'No Photo Selected'}
+      </div>
+
       {/* Full-screen canvas container */}
       <div
         ref={canvasRef}
-        className="w-full h-full bg-gray-100 overflow-hidden select-none"
+        className="bg-gray-100 overflow-hidden select-none"
         style={{
-          touchAction: 'none', // Prevent default touch behaviors
+          width: '100%',
+          height: '100%',
+          minHeight: '100%',
+          touchAction: 'pan-x pan-y pinch-zoom',
           userSelect: 'none',
           WebkitUserSelect: 'none'
         }}
@@ -365,14 +411,35 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
                   transform: `rotate(${position.rotation}deg) scale(${position.scale})`,
                   zIndex: item.zIndex,
                   willChange: 'transform',
-                  touchAction: 'none'
+                  touchAction: 'manipulation'
                 }}
-                onTouchStart={(e) => handleItemStart(e, item)}
-                onTouchMove={(e) => handleItemMove(e, item)}
-                onTouchEnd={(e) => handleItemEnd(e, item)}
+                onTouchStart={(e) => {
+                  console.log('[TOUCH] Touch start detected on item:', item.id.slice(0, 8));
+                  handleItemStart(e, item);
+                }}
+                onTouchMove={(e) => {
+                  handleItemMove(e, item);
+                }}
+                onTouchEnd={(e) => {
+                  console.log('[TOUCH] Touch end detected on item:', item.id.slice(0, 8));
+                  handleItemEnd(e, item);
+                }}
+                onClick={() => {
+                  console.log('[CLICK] Click detected on item (fallback):', item.id.slice(0, 8));
+                  setSelectedItem(item.id);
+                  setShowSettings(true);
+                }}
               >
                 {item.mode === 'polaroid' ? (
-                  <div className="bg-white p-4 shadow-2xl">
+                  <div
+                    className="bg-white p-4 shadow-2xl transition-all duration-300"
+                    style={{
+                      border: selectedItem === item.id ? '4px solid #3B82F6' : '4px solid transparent',
+                      boxShadow: selectedItem === item.id
+                        ? '0 0 20px rgba(59, 130, 246, 0.5), 0 10px 40px rgba(0,0,0,0.3)'
+                        : '0 10px 40px rgba(0,0,0,0.2)'
+                    }}
+                  >
                     <img
                       src={item.photo.url}
                       alt={item.photo.filename}
@@ -386,12 +453,24 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
                     )}
                   </div>
                 ) : (
-                  <img
-                    src={item.photo.url}
-                    alt={item.photo.filename}
-                    className="w-64 h-64 object-cover shadow-lg"
-                    draggable={false}
-                  />
+                  <div
+                    className="transition-all duration-300"
+                    style={{
+                      border: selectedItem === item.id ? '4px solid #3B82F6' : '4px solid transparent',
+                      boxShadow: selectedItem === item.id
+                        ? '0 0 20px rgba(59, 130, 246, 0.5), 0 10px 40px rgba(0,0,0,0.3)'
+                        : '0 10px 40px rgba(0,0,0,0.2)',
+                      borderRadius: '4px',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <img
+                      src={item.photo.url}
+                      alt={item.photo.filename}
+                      className="w-64 h-64 object-cover"
+                      draggable={false}
+                    />
+                  </div>
                 )}
               </div>
             );
@@ -421,8 +500,8 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
         </button>
       </div>
 
-      {/* Bottom Toolbar for Photo Settings - React Portal to escape overflow-hidden */}
-      {showSettings && selectedItem && ReactDOM.createPortal(
+      {/* Bottom Toolbar for Photo Settings - Always render Portal, control visibility with CSS */}
+      {ReactDOM.createPortal(
         <div
           className="bg-white border-t-2 border-gray-300 shadow-2xl overflow-y-auto"
           style={{
@@ -431,17 +510,38 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
             left: 0,
             right: 0,
             width: '100%',
-            maxHeight: '40vh',
+            maxHeight: '25vh',
             zIndex: 99999,
             backgroundColor: 'white',
-            boxShadow: '0 -4px 20px rgba(0,0,0,0.15)'
+            boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
+            // Use visibility and opacity for mobile compatibility
+            visibility: (showSettings && selectedItem) ? 'visible' : 'hidden',
+            opacity: (showSettings && selectedItem) ? 1 : 0,
+            transform: (showSettings && selectedItem) ? 'translateY(0)' : 'translateY(100%)',
+            WebkitTransform: (showSettings && selectedItem) ? 'translateY(0)' : 'translateY(100%)',
+            transition: 'transform 0.3s ease-out, opacity 0.3s ease-out, visibility 0.3s',
+            WebkitTransition: 'transform 0.3s ease-out, opacity 0.3s ease-out, visibility 0.3s',
+            pointerEvents: (showSettings && selectedItem) ? 'auto' : 'none',
+            touchAction: 'manipulation',
+            willChange: 'transform, opacity'
           }}>
           <div className="p-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-lg">Photo Settings</h3>
               <button
-                onClick={() => setShowSettings(false)}
-                className="text-gray-500 hover:text-gray-700 p-2 text-xl"
+                onClick={() => {
+                  console.log('[SETTINGS] Close button clicked');
+                  setShowSettings(false);
+                  setSelectedItem(null);
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  console.log('[SETTINGS] Close button touched');
+                  setShowSettings(false);
+                  setSelectedItem(null);
+                }}
+                className="text-gray-500 hover:text-gray-700 p-3 text-2xl min-w-[44px] min-h-[44px]"
+                style={{ touchAction: 'manipulation' }}
               >
                 ✕
               </button>
@@ -450,8 +550,9 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
             <div className="space-y-4">
 
           {(() => {
-            const item = collageItems.find(i => i.id === selectedItem);
-            if (!item) return null;
+            const item = selectedItem ? collageItems.find(i => i.id === selectedItem) : null;
+            console.log('[SETTINGS] Looking for item:', { selectedItem, found: !!item });
+            if (!item) return <div>No item selected</div>;
 
             return (
               <>
@@ -562,9 +663,16 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
           <div className="text-cyan-400">
             Settings: {showSettings ? 'OPEN' : 'closed'}
           </div>
+          <div className="mt-2 text-yellow-400">
+            Portal Should Render: {(showSettings && selectedItem) ? 'YES ✓' : 'NO ✗'}
+          </div>
+          <div className="text-white">
+            Items: {collageItems.length}
+          </div>
         </div>,
         document.body // Debug overlay also rendered to body
       )}
+
     </>
   );
 };
