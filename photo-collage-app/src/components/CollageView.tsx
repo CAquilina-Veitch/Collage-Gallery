@@ -111,6 +111,8 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
   // Canvas pan and zoom handlers
   const handleCanvasStart = (e: React.TouchEvent | React.MouseEvent) => {
     if ('touches' in e) {
+      e.preventDefault();
+      e.stopPropagation();
       if (e.touches.length === 1 && !activeItemId.current) {
         isDraggingCanvas.current = true;
         lastTouchPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -124,34 +126,40 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
 
   const handleCanvasMove = (e: React.TouchEvent | React.MouseEvent) => {
     if ('touches' in e) {
+      e.preventDefault();
+      e.stopPropagation();
       if (e.touches.length === 1 && isDraggingCanvas.current) {
         const dx = e.touches[0].clientX - lastTouchPos.current.x;
         const dy = e.touches[0].clientY - lastTouchPos.current.y;
-        
+
         setCanvasTransform(prev => ({
           ...prev,
           x: prev.x + dx,
           y: prev.y + dy
         }));
-        
+
         lastTouchPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       } else if (e.touches.length === 2 && lastPinchDistance.current > 0) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
         const distance = Math.sqrt(dx * dx + dy * dy);
         const scale = distance / lastPinchDistance.current;
-        
+
         setCanvasTransform(prev => ({
           ...prev,
           scale: Math.max(0.5, Math.min(3, prev.scale * scale))
         }));
-        
+
         lastPinchDistance.current = distance;
       }
     }
   };
 
-  const handleCanvasEnd = () => {
+  const handleCanvasEnd = (e?: React.TouchEvent | React.MouseEvent) => {
+    if (e && 'touches' in e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     isDraggingCanvas.current = false;
     lastPinchDistance.current = 0;
   };
@@ -374,7 +382,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
           width: '100%',
           height: '100%',
           minHeight: '100%',
-          touchAction: 'pan-x pan-y pinch-zoom',
+          touchAction: 'none',
           userSelect: 'none',
           WebkitUserSelect: 'none'
         }}
@@ -415,13 +423,16 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
                 }}
                 onTouchStart={(e) => {
                   console.log('[TOUCH] Touch start detected on item:', item.id.slice(0, 8));
+                  e.stopPropagation(); // Prevent canvas from handling this
                   handleItemStart(e, item);
                 }}
                 onTouchMove={(e) => {
+                  e.stopPropagation(); // Prevent canvas from handling this
                   handleItemMove(e, item);
                 }}
                 onTouchEnd={(e) => {
                   console.log('[TOUCH] Touch end detected on item:', item.id.slice(0, 8));
+                  e.stopPropagation(); // Prevent canvas from handling this
                   handleItemEnd(e, item);
                 }}
                 onClick={() => {
