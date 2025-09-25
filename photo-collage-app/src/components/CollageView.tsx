@@ -421,13 +421,19 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
         </button>
       </div>
 
-      {/* Bottom Toolbar for Photo Settings - Direct render */}
-      {showSettings && selectedItem && (
+      {/* Bottom Toolbar for Photo Settings - React Portal to escape overflow-hidden */}
+      {showSettings && selectedItem && ReactDOM.createPortal(
         <div
-          className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-300 shadow-2xl overflow-y-auto"
+          className="bg-white border-t-2 border-gray-300 shadow-2xl overflow-y-auto"
           style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            width: '100%',
             maxHeight: '40vh',
             zIndex: 99999,
+            backgroundColor: 'white',
             boxShadow: '0 -4px 20px rgba(0,0,0,0.15)'
           }}>
           <div className="p-4">
@@ -532,7 +538,8 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
           })()}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body // Render to document body to escape overflow-hidden
       )}
 
       {/* Debug Overlay - only in development, also via Portal */}
