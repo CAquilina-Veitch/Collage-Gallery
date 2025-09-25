@@ -163,6 +163,19 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
     touchStartTime.current = Date.now();
     addDebug(`Touch START on photo ${item.id.slice(0, 8)}`);
 
+    // Initialize local state with current item values if not already present
+    if (!localItemPositions[item.id]) {
+      setLocalItemPositions(prev => ({
+        ...prev,
+        [item.id]: {
+          x: item.x || 50,
+          y: item.y || 50,
+          scale: item.scale || 1,
+          rotation: item.rotation || 0
+        }
+      }));
+    }
+
     itemTouchData.current[item.id] = {
       startTime: Date.now(),
       startPos: { x: e.touches[0].clientX, y: e.touches[0].clientY },
@@ -197,9 +210,10 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
         setLocalItemPositions(prev => ({
           ...prev,
           [item.id]: {
-            ...prev[item.id],
             x: x - 128, // 128 = half of 256px image
-            y: y - 128
+            y: y - 128,
+            scale: prev[item.id]?.scale ?? item.scale ?? 1,
+            rotation: prev[item.id]?.rotation ?? item.rotation ?? 0
           }
         }));
       }
@@ -210,16 +224,19 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
       const data = itemTouchData.current[item.id];
 
       const scaleChange = currentDistance / data.scale;
-      const newScale = Math.max(0.5, Math.min(3, (item.scale || 1) * scaleChange));
+      const currentScale = localItemPositions[item.id]?.scale ?? item.scale ?? 1;
+      const newScale = Math.max(0.5, Math.min(3, currentScale * scaleChange));
 
       const rotationChange = currentAngle - data.rotation;
-      const newRotation = (item.rotation || 0) + rotationChange;
+      const currentRotation = localItemPositions[item.id]?.rotation ?? item.rotation ?? 0;
+      const newRotation = currentRotation + rotationChange;
 
       // Update local state for immediate visual feedback
       setLocalItemPositions(prev => ({
         ...prev,
         [item.id]: {
-          ...prev[item.id],
+          x: prev[item.id]?.x ?? item.x ?? 50,
+          y: prev[item.id]?.y ?? item.y ?? 50,
           scale: newScale,
           rotation: newRotation
         }
@@ -309,7 +326,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
       {/* Full-screen canvas container */}
       <div
         ref={canvasRef}
-        className="absolute inset-0 bg-gray-100 overflow-hidden select-none"
+        className="w-full h-full bg-gray-100 overflow-hidden select-none"
         style={{
           touchAction: 'none', // Prevent default touch behaviors
           userSelect: 'none',
@@ -404,19 +421,13 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
         </button>
       </div>
 
-      {/* Bottom Toolbar for Photo Settings - Rendered to document body via Portal */}
-      {showSettings && selectedItem && ReactDOM.createPortal(
+      {/* Bottom Toolbar for Photo Settings - Direct render */}
+      {showSettings && selectedItem && (
         <div
-          className="bg-white border-t-2 border-gray-300 shadow-2xl overflow-y-auto"
+          className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-300 shadow-2xl overflow-y-auto"
           style={{
-            position: 'fixed',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            width: '100%',
             maxHeight: '40vh',
             zIndex: 99999,
-            backgroundColor: 'white',
             boxShadow: '0 -4px 20px rgba(0,0,0,0.15)'
           }}>
           <div className="p-4">
@@ -521,8 +532,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
           })()}
             </div>
           </div>
-        </div>,
-        document.body // Render directly to document body, outside React tree!
+        </div>
       )}
 
       {/* Debug Overlay - only in development, also via Portal */}
