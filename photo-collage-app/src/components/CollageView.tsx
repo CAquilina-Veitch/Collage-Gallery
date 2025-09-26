@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
-import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, where, getDocs } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, where, getDocs, collectionGroup } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Album, Photo, CollageItem } from '../types';
 
@@ -53,35 +53,68 @@ export const CollageView: React.FC<CollageViewProps> = ({ album, isLocked = true
   useEffect(() => {
     if (!album) return;
 
-    const collageQuery = query(collection(db, 'albums', album.id, 'collage'));
-    const photosQuery = query(
-      collection(db, 'albums', album.id, 'photos'),
-      where('inCollage', '==', true)
-    );
+    let unsubscribeCollage: () => void;
 
-    const unsubscribeCollage = onSnapshot(collageQuery, async (collageSnapshot) => {
-      const photosSnapshot = await getDocs(photosQuery);
-      const photosMap = new Map<string, Photo>();
-      
-      photosSnapshot.forEach((doc) => {
-        photosMap.set(doc.id, { id: doc.id, ...doc.data() } as Photo);
+    if (album.id === 'all-albums') {
+      // For "All Albums", use separate collection and get photos from all albums
+      const collageQuery = query(collection(db, 'all-albums-collage'));
+      const photosQuery = query(collectionGroup(db, 'photos'), where('inCollage', '==', true));
+
+      unsubscribeCollage = onSnapshot(collageQuery, async (collageSnapshot) => {
+        const photosSnapshot = await getDocs(photosQuery);
+        const photosMap = new Map<string, Photo>();
+
+        photosSnapshot.forEach((doc) => {
+          photosMap.set(doc.id, { id: doc.id, ...doc.data() } as Photo);
+        });
+
+        const items: CollagePhotoItem[] = [];
+        collageSnapshot.forEach((doc) => {
+          const collageData = doc.data() as any;
+          const photo = photosMap.get(collageData.photoId);
+          if (photo) {
+            items.push({
+              id: doc.id,
+              ...collageData,
+              photo
+            });
+          }
+        });
+
+        setCollageItems(items.sort((a, b) => a.zIndex - b.zIndex));
       });
+    } else {
+      // For regular albums, use existing logic
+      const collageQuery = query(collection(db, 'albums', album.id, 'collage'));
+      const photosQuery = query(
+        collection(db, 'albums', album.id, 'photos'),
+        where('inCollage', '==', true)
+      );
 
-      const items: CollagePhotoItem[] = [];
-      collageSnapshot.forEach((doc) => {
-        const collageData = doc.data() as any;
-        const photo = photosMap.get(collageData.photoId);
-        if (photo) {
-          items.push({
-            id: doc.id,
-            ...collageData,
-            photo
-          });
-        }
+      unsubscribeCollage = onSnapshot(collageQuery, async (collageSnapshot) => {
+        const photosSnapshot = await getDocs(photosQuery);
+        const photosMap = new Map<string, Photo>();
+
+        photosSnapshot.forEach((doc) => {
+          photosMap.set(doc.id, { id: doc.id, ...doc.data() } as Photo);
+        });
+
+        const items: CollagePhotoItem[] = [];
+        collageSnapshot.forEach((doc) => {
+          const collageData = doc.data() as any;
+          const photo = photosMap.get(collageData.photoId);
+          if (photo) {
+            items.push({
+              id: doc.id,
+              ...collageData,
+              photo
+            });
+          }
+        });
+
+        setCollageItems(items.sort((a, b) => a.zIndex - b.zIndex));
       });
-
-      setCollageItems(items.sort((a, b) => a.zIndex - b.zIndex));
-    });
+    }
 
     return () => {
       unsubscribeCollage();
@@ -90,7 +123,11 @@ export const CollageView: React.FC<CollageViewProps> = ({ album, isLocked = true
 
   const updateCollageItem = async (itemId: string, updates: Partial<CollageItem>) => {
     try {
-      await updateDoc(doc(db, 'albums', album.id, 'collage', itemId), updates);
+      if (album.id === 'all-albums') {
+        await updateDoc(doc(db, 'all-albums-collage', itemId), updates);
+      } else {
+        await updateDoc(doc(db, 'albums', album.id, 'collage', itemId), updates);
+      }
     } catch (error) {
       console.error('Error updating collage item:', error);
     }
@@ -98,10 +135,15 @@ export const CollageView: React.FC<CollageViewProps> = ({ album, isLocked = true
 
   const deleteFromCollage = async (item: CollagePhotoItem) => {
     try {
-      await deleteDoc(doc(db, 'albums', album.id, 'collage', item.id));
-      await updateDoc(doc(db, 'albums', album.id, 'photos', item.photo.id), {
-        inCollage: false
-      });
+      if (album.id === 'all-albums') {
+        await deleteDoc(doc(db, 'all-albums-collage', item.id));
+        // Note: For "All Albums", we don't update inCollage flag since photos may still be in other album collages
+      } else {
+        await deleteDoc(doc(db, 'albums', album.id, 'collage', item.id));
+        await updateDoc(doc(db, 'albums', album.id, 'photos', item.photo.id), {
+          inCollage: false
+        });
+      }
       setSelectedItem(null);
       setShowSettings(false);
     } catch (error) {

@@ -206,6 +206,32 @@ export const AlbumSidebar: React.FC<AlbumSidebarProps> = ({
 
           {/* Albums list */}
           <div className="flex-1 overflow-y-auto min-h-0">
+            {/* Special "All Albums" item */}
+            <div
+              className={`border-b transition-colors ${
+                selectedAlbum?.id === 'all-albums' ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''
+              }`}
+            >
+              <button
+                onClick={() => {
+                  onSelectAlbum({
+                    id: 'all-albums',
+                    name: 'All Albums',
+                    createdAt: null,
+                    createdBy: '',
+                    sharedWith: []
+                  });
+                  onClose();
+                }}
+                className="w-full p-4 text-left hover:bg-gray-50"
+              >
+                <div>
+                  <h3 className="font-medium text-gray-900">All Albums</h3>
+                  <p className="text-sm text-gray-500">ALL OF THEM</p>
+                </div>
+              </button>
+            </div>
+
             {albums.map((album) => (
               <div
                 key={album.id}

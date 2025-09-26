@@ -112,7 +112,7 @@ function MainApp() {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          {selectedAlbum && viewMode === 'gallery' && (
+                          {selectedAlbum && viewMode === 'gallery' && selectedAlbum.id !== 'all-albums' && (
                             <button
                               onClick={triggerFileUpload}
                               disabled={uploading}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { collection, query, onSnapshot, doc, updateDoc, addDoc, serverTimestamp, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, updateDoc, addDoc, serverTimestamp, deleteDoc, writeBatch, collectionGroup } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
@@ -45,14 +45,29 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ album, fileInputRef, u
   useEffect(() => {
     if (!album) return;
 
-    const q = query(collection(db, 'albums', album.id, 'photos'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const photoData: Photo[] = [];
-      snapshot.forEach((doc) => {
-        photoData.push({ id: doc.id, ...doc.data() } as Photo);
+    let unsubscribe: () => void;
+
+    if (album.id === 'all-albums') {
+      // Query all photos from all albums using collectionGroup
+      const q = query(collectionGroup(db, 'photos'));
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const photoData: Photo[] = [];
+        snapshot.forEach((doc) => {
+          photoData.push({ id: doc.id, ...doc.data() } as Photo);
+        });
+        setPhotos(photoData.sort((a, b) => b.uploadedAt?.seconds - a.uploadedAt?.seconds));
       });
-      setPhotos(photoData.sort((a, b) => b.uploadedAt?.seconds - a.uploadedAt?.seconds));
-    });
+    } else {
+      // Query photos from specific album
+      const q = query(collection(db, 'albums', album.id, 'photos'));
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const photoData: Photo[] = [];
+        snapshot.forEach((doc) => {
+          photoData.push({ id: doc.id, ...doc.data() } as Photo);
+        });
+        setPhotos(photoData.sort((a, b) => b.uploadedAt?.seconds - a.uploadedAt?.seconds));
+      });
+    }
 
     return () => unsubscribe();
   }, [album]);
@@ -177,17 +192,30 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ album, fileInputRef, u
       });
 
       // If adding to collage, create collage item
-      if (!photo.inCollage) {
-        await addDoc(collection(db, 'albums', album.id, 'collage'), {
-          photoId: photo.id,
-          x: 50 + Math.random() * 200,
-          y: 50 + Math.random() * 200,
-          rotation: 0,
-          scale: 1,
-          zIndex: Date.now(),
-          mode: 'polaroid',
-          captionText: ''
-        });
+      if (!photo.inCollage || album.id === 'all-albums') {
+        if (album.id === 'all-albums') {
+          await addDoc(collection(db, 'all-albums-collage'), {
+            photoId: photo.id,
+            x: 50 + Math.random() * 200,
+            y: 50 + Math.random() * 200,
+            rotation: 0,
+            scale: 1,
+            zIndex: Date.now(),
+            mode: 'polaroid',
+            captionText: ''
+          });
+        } else {
+          await addDoc(collection(db, 'albums', album.id, 'collage'), {
+            photoId: photo.id,
+            x: 50 + Math.random() * 200,
+            y: 50 + Math.random() * 200,
+            rotation: 0,
+            scale: 1,
+            zIndex: Date.now(),
+            mode: 'polaroid',
+            captionText: ''
+          });
+        }
       } else {
         // If removing from collage, delete collage item
         // This would require querying for the collage item first
@@ -245,26 +273,46 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ album, fileInputRef, u
   const sendPhotosToCollage = useCallback(async (photoIds: string[]) => {
     try {
       const batch = writeBatch(db);
-      const photosToAdd = photos.filter(p => photoIds.includes(p.id) && !p.inCollage);
+      const photosToAdd = photos.filter(p => photoIds.includes(p.id));
 
-      for (const photo of photosToAdd) {
-        // Update photo inCollage status
-        batch.update(doc(db, 'albums', album.id, 'photos', photo.id), {
-          inCollage: true
-        });
+      if (album.id === 'all-albums') {
+        // For "All Albums", only add to the all-albums-collage collection
+        for (const photo of photosToAdd) {
+          const collageItemRef = doc(collection(db, 'all-albums-collage'));
+          batch.set(collageItemRef, {
+            photoId: photo.id,
+            x: 50 + Math.random() * 300,
+            y: 50 + Math.random() * 300,
+            rotation: 0,
+            scale: 1,
+            zIndex: Date.now() + Math.random(),
+            mode: 'polaroid',
+            captionText: ''
+          });
+        }
+      } else {
+        // For regular albums, use existing logic
+        const photosNotInCollage = photosToAdd.filter(p => !p.inCollage);
 
-        // Create collage item
-        const collageItemRef = doc(collection(db, 'albums', album.id, 'collage'));
-        batch.set(collageItemRef, {
-          photoId: photo.id,
-          x: 50 + Math.random() * 300,
-          y: 50 + Math.random() * 300,
-          rotation: 0,
-          scale: 1,
-          zIndex: Date.now() + Math.random(),
-          mode: 'polaroid',
-          captionText: ''
-        });
+        for (const photo of photosNotInCollage) {
+          // Update photo inCollage status
+          batch.update(doc(db, 'albums', album.id, 'photos', photo.id), {
+            inCollage: true
+          });
+
+          // Create collage item
+          const collageItemRef = doc(collection(db, 'albums', album.id, 'collage'));
+          batch.set(collageItemRef, {
+            photoId: photo.id,
+            x: 50 + Math.random() * 300,
+            y: 50 + Math.random() * 300,
+            rotation: 0,
+            scale: 1,
+            zIndex: Date.now() + Math.random(),
+            mode: 'polaroid',
+            captionText: ''
+          });
+        }
       }
 
       await batch.commit();
@@ -371,7 +419,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ album, fileInputRef, u
   }, [selectedPhotos, sendPhotosToCollage, downloadMultiplePhotos, deletePhotos, exitSelectionMode]);
 
   return (
-    <div className="p-4">
+    <div className="pt-20 px-4 pb-4">
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
