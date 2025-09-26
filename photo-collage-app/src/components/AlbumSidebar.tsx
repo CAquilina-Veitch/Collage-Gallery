@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
-import { db, ALLOWED_EMAILS } from '../firebase/config';
+import { collection, query, where, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, getDocs } from 'firebase/firestore';
+import { ref, listAll, deleteObject } from 'firebase/storage';
+import { db, storage, ALLOWED_EMAILS } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Album {
@@ -15,7 +16,7 @@ interface AlbumSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   selectedAlbum: Album | null;
-  onSelectAlbum: (album: Album) => void;
+  onSelectAlbum: (album: Album | null) => void;
 }
 
 export const AlbumSidebar: React.FC<AlbumSidebarProps> = ({
@@ -92,6 +93,64 @@ export const AlbumSidebar: React.FC<AlbumSidebarProps> = ({
   const cancelEdit = () => {
     setEditingAlbum(null);
     setEditName('');
+  };
+
+  const deleteAlbum = async (album: Album) => {
+    const confirmMessage = `Are you sure you want to delete the album "${album.name}"?\n\nThis will permanently delete:\n• All photos in the album\n• All collage arrangements\n• All album data\n\nThis action cannot be undone.`;
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      // Delete all photos from Firestore
+      const photosQuery = query(collection(db, 'albums', album.id, 'photos'));
+      const photosSnapshot = await getDocs(photosQuery);
+
+      for (const photoDoc of photosSnapshot.docs) {
+        await deleteDoc(photoDoc.ref);
+      }
+
+      // Delete all collage items from Firestore
+      const collageQuery = query(collection(db, 'albums', album.id, 'collage'));
+      const collageSnapshot = await getDocs(collageQuery);
+
+      for (const collageDoc of collageSnapshot.docs) {
+        await deleteDoc(collageDoc.ref);
+      }
+
+      // Delete all files from Firebase Storage
+      try {
+        const storageRef = ref(storage, `albums/${album.id}`);
+        const fileList = await listAll(storageRef);
+
+        // Delete all files in the album folder
+        const deletePromises = fileList.items.map(item => deleteObject(item));
+        await Promise.all(deletePromises);
+
+        // Delete subfolders if any
+        for (const folder of fileList.prefixes) {
+          const subFiles = await listAll(folder);
+          const subDeletePromises = subFiles.items.map(item => deleteObject(item));
+          await Promise.all(subDeletePromises);
+        }
+      } catch (storageError) {
+        console.warn('Some files could not be deleted from storage:', storageError);
+      }
+
+      // Finally, delete the album document
+      await deleteDoc(doc(db, 'albums', album.id));
+
+      // If this was the selected album, clear the selection
+      if (selectedAlbum?.id === album.id) {
+        const remainingAlbum = albums.find(a => a.id !== album.id);
+        onSelectAlbum(remainingAlbum || null);
+      }
+
+    } catch (error) {
+      console.error('Error deleting album:', error);
+      alert('Failed to delete the album completely. Some data may remain.');
+    }
   };
 
   return (
@@ -196,18 +255,32 @@ export const AlbumSidebar: React.FC<AlbumSidebarProps> = ({
                       </div>
                     </button>
                     {album.createdBy === currentUser?.email && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          startEditing(album);
-                        }}
-                        className="p-4 text-gray-400 hover:text-gray-600"
-                        title="Rename album"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                      </button>
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startEditing(album);
+                          }}
+                          className="p-4 text-gray-400 hover:text-gray-600"
+                          title="Rename album"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteAlbum(album);
+                          }}
+                          className="p-4 text-gray-400 hover:text-red-600"
+                          title="Delete album"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </>
                     )}
                   </div>
                 )}
