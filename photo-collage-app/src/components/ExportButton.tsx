@@ -146,9 +146,14 @@ export const ExportButton: React.FC<ExportButtonProps> = ({ album }) => {
         <button
           onClick={() => setShowDropdown(!showDropdown)}
           disabled={isExporting}
-          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+          className="p-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
         >
-          {isExporting ? 'Exporting...' : 'Export'}
+          <img
+            src={`${process.env.PUBLIC_URL}/export.png`}
+            alt="Export"
+            className="h-6 w-6 filter brightness-0 invert"
+          />
+          <span className="hidden sm:inline">{isExporting ? 'Exporting...' : 'Export'}</span>
         </button>
 
         {/* Export Options Dropdown */}
