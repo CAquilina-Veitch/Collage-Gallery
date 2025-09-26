@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { PrivateRoute } from './components/PrivateRoute';
 import { Login } from './components/Login';
@@ -7,25 +7,40 @@ import { AlbumSidebar } from './components/AlbumSidebar';
 import { GalleryView } from './components/GalleryView';
 import { CollageView } from './components/CollageView';
 import { ExportButton } from './components/ExportButton';
+import ShareHandler from './components/ShareHandler';
 import { Album } from './types';
 import './App.css';
 
-function App() {
+function MainApp() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
   const [viewMode, setViewMode] = useState<'gallery' | 'collage'>('gallery');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Handle navigation from ShareHandler with selected album
+  useEffect(() => {
+    if (location.state && (location.state as any).selectedAlbumId) {
+      const albumId = (location.state as any).selectedAlbumId;
+      // You would fetch the album details here or pass it through state
+      // For now, we'll just clear the state
+      navigate('/', { replace: true });
+    }
+  }, [location, navigate]);
 
   const triggerFileUpload = () => {
     fileInputRef.current?.click();
   };
 
+  if (location.pathname === '/share') {
+    return null; // ShareHandler is handled by router
+  }
+
   return (
-    <HashRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+    <Routes>
+      <Route path="/login" element={<Login />} />
           <Route
             path="/"
             element={
@@ -149,6 +164,17 @@ function App() {
             }
           />
           <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+  );
+}
+
+function App() {
+  return (
+    <HashRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/share" element={<ShareHandler />} />
+          <Route path="/*" element={<MainApp />} />
         </Routes>
       </AuthProvider>
     </HashRouter>

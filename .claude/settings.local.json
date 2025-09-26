@@ -19,7 +19,8 @@
       "Bash(npm run build:*)",
       "Bash(cmd:*)",
       "Bash(cd:*)",
-      "Read(//mnt/c/Users/cody.av/Desktop/**)"
+      "Read(//mnt/c/Users/cody.av/Desktop/**)",
+      "WebSearch"
     ],
     "deny": []
   }

@@ -8,6 +8,23 @@ import { PhotoPreviewModal } from './PhotoPreviewModal';
 import ReactDOM from 'react-dom';
 import heic2any from 'heic2any';
 
+// Type declaration for WakeLockSentinel
+declare global {
+  interface WakeLockSentinel {
+    released: boolean;
+    type: 'screen';
+    release(): Promise<void>;
+    addEventListener(type: 'release', listener: () => void): void;
+    removeEventListener(type: 'release', listener: () => void): void;
+  }
+
+  interface Navigator {
+    wakeLock: {
+      request(type: 'screen'): Promise<WakeLockSentinel>;
+    };
+  }
+}
+
 interface GalleryViewProps {
   album: Album;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
@@ -23,6 +40,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ album, fileInputRef, u
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
   useEffect(() => {
     if (!album) return;
@@ -53,11 +71,56 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ album, fileInputRef, u
     }
   };
 
+  const requestWakeLock = async () => {
+    if ('wakeLock' in navigator) {
+      try {
+        wakeLockRef.current = await navigator.wakeLock.request('screen');
+        console.log('Wake Lock acquired for upload');
+
+        wakeLockRef.current.addEventListener('release', () => {
+          console.log('Wake Lock released');
+        });
+      } catch (err) {
+        console.error('Failed to acquire wake lock:', err);
+      }
+    }
+  };
+
+  const releaseWakeLock = async () => {
+    if (wakeLockRef.current) {
+      try {
+        await wakeLockRef.current.release();
+        wakeLockRef.current = null;
+      } catch (err) {
+        console.error('Failed to release wake lock:', err);
+      }
+    }
+  };
+
+  // Handle page visibility changes
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (uploading && !document.hidden) {
+        requestWakeLock();
+      } else if (document.hidden && wakeLockRef.current) {
+        releaseWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      releaseWakeLock();
+    };
+  }, [uploading]);
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || !currentUser?.email) return;
 
     setUploading(true);
+    await requestWakeLock();
     
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -101,6 +164,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ album, fileInputRef, u
     }
 
     setUploading(false);
+    await releaseWakeLock();
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
