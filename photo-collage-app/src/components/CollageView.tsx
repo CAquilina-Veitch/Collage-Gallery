@@ -6,13 +6,14 @@ import { Album, Photo, CollageItem } from '../types';
 
 interface CollageViewProps {
   album: Album;
+  isLocked?: boolean;
 }
 
 interface CollagePhotoItem extends CollageItem {
   photo: Photo;
 }
 
-export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
+export const CollageView: React.FC<CollageViewProps> = ({ album, isLocked = true }) => {
   const [collageItems, setCollageItems] = useState<CollagePhotoItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -147,7 +148,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
 
         setCanvasTransform(prev => ({
           ...prev,
-          scale: Math.max(0.5, Math.min(3, prev.scale * scale))
+          scale: Math.max(0.1, Math.min(3, prev.scale * scale))
         }));
 
         lastPinchDistance.current = distance;
@@ -180,6 +181,13 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
   // Photo item handlers
   const handleItemStart = (e: React.TouchEvent, item: CollagePhotoItem) => {
     e.stopPropagation();
+
+    // If locked, don't allow photo interactions
+    if (isLocked) {
+      addDebug(`Touch on photo blocked - canvas is LOCKED`);
+      return;
+    }
+
     activeItemId.current = item.id;
     touchStartTime.current = Date.now();
     addDebug(`Touch START on photo ${item.id.slice(0, 8)}`);
@@ -214,6 +222,9 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
   const handleItemMove = (e: React.TouchEvent, item: CollagePhotoItem) => {
     e.stopPropagation();
     e.preventDefault();
+
+    // If locked, don't allow photo movement
+    if (isLocked) return;
 
     if (!itemTouchData.current[item.id] || activeItemId.current !== item.id) return;
 
@@ -270,6 +281,9 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
   };
 
   const handleItemEnd = (e: React.TouchEvent, item: CollagePhotoItem) => {
+    // If locked, don't process end events
+    if (isLocked) return;
+
     const touchDuration = Date.now() - touchStartTime.current;
     addDebug(`Touch END on ${item.id.slice(0, 8)}, duration: ${touchDuration}ms`);
 
@@ -392,14 +406,16 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
             return (
               <div
                 key={item.id}
-                className="absolute cursor-pointer"
+                className={`absolute ${isLocked ? 'pointer-events-none' : 'cursor-pointer'}`}
                 style={{
                   left: `${position.x}px`,
                   top: `${position.y}px`,
                   transform: `rotate(${position.rotation}deg) scale(${position.scale})`,
                   zIndex: item.zIndex,
                   willChange: 'transform',
-                  touchAction: 'manipulation'
+                  touchAction: 'manipulation',
+                  opacity: isLocked ? 0.9 : 1,
+                  filter: isLocked ? 'brightness(0.95)' : 'none'
                 }}
                 onTouchStart={(e) => {
                   console.log('[TOUCH] Touch start detected on item:', item.id.slice(0, 8));
@@ -417,8 +433,10 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
                 }}
                 onClick={() => {
                   console.log('[CLICK] Click detected on item (fallback):', item.id.slice(0, 8));
-                  setSelectedItem(item.id);
-                  setShowSettings(true);
+                  if (!isLocked) {
+                    setSelectedItem(item.id);
+                    setShowSettings(true);
+                  }
                 }}
               >
                 {item.mode === 'polaroid' ? (
@@ -469,6 +487,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
         </div>
       </div>
 
+
       {/* Floating zoom controls */}
       <div className="fixed bottom-4 left-4 z-50 flex gap-2">
         <button
@@ -478,7 +497,7 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
           +
         </button>
         <button
-          onClick={() => setCanvasTransform(prev => ({ ...prev, scale: Math.max(0.5, prev.scale / 1.2) }))}
+          onClick={() => setCanvasTransform(prev => ({ ...prev, scale: Math.max(0.1, prev.scale / 1.2) }))}
           className="bg-white p-3 rounded-full shadow-lg hover:shadow-xl transition-shadow text-lg font-bold"
         >
           −

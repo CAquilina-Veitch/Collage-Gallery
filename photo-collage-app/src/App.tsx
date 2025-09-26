@@ -16,6 +16,7 @@ function MainApp() {
   const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
   const [viewMode, setViewMode] = useState<'gallery' | 'collage'>('gallery');
   const [uploading, setUploading] = useState(false);
+  const [isLocked, setIsLocked] = useState(true); // Lock state for collage
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -126,7 +127,21 @@ function MainApp() {
                             </button>
                           )}
                           {selectedAlbum && viewMode === 'collage' && (
-                            <ExportButton album={selectedAlbum} />
+                            <>
+                              <button
+                                onClick={() => setIsLocked(!isLocked)}
+                                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors flex items-center gap-2"
+                                title={isLocked ? "Unlock to edit photos" : "Lock to navigate only"}
+                              >
+                                <img
+                                  src={`${process.env.PUBLIC_URL}/${isLocked ? 'locked' : 'unlocked'}.png`}
+                                  alt={isLocked ? "Locked" : "Unlocked"}
+                                  className="h-6 w-6"
+                                />
+                                <span className="hidden sm:inline">{isLocked ? 'Locked' : 'Unlocked'}</span>
+                              </button>
+                              <ExportButton album={selectedAlbum} />
+                            </>
                           )}
                         </div>
                       </div>
@@ -150,7 +165,7 @@ function MainApp() {
                           />
                         ) : (
                           <div style={{ height: '100%', width: '100%' }}>
-                            <CollageView album={selectedAlbum} />
+                            <CollageView album={selectedAlbum} isLocked={isLocked} />
                           </div>
                         )
                       ) : (
