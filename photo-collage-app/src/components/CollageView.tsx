@@ -353,26 +353,6 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
 
   return (
     <>
-      {/* Always-visible selection indicator below header */}
-      <div
-        style={{
-          position: 'fixed',
-          top: '80px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 99999,
-          padding: '8px 16px',
-          borderRadius: '20px',
-          backgroundColor: selectedItem ? '#10B981' : '#EF4444',
-          color: 'white',
-          fontSize: '14px',
-          fontWeight: 'bold',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-          pointerEvents: 'none'
-        }}
-      >
-        {selectedItem ? `Photo Selected: ${selectedItem.slice(0, 8)}` : 'No Photo Selected'}
-      </div>
 
       {/* Full-screen canvas container */}
       <div
@@ -598,31 +578,6 @@ export const CollageView: React.FC<CollageViewProps> = ({ album }) => {
                   </div>
                 )}
 
-                <div>
-                  <label className="block text-sm font-medium mb-2">Size: {(item.scale || 1).toFixed(2)}x</label>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2"
-                    step="0.1"
-                    value={item.scale || 1}
-                    onChange={(e) => updateCollageItem(item.id, { scale: parseFloat(e.target.value) })}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Rotation: {item.rotation || 0}°</label>
-                  <input
-                    type="range"
-                    min="-45"
-                    max="45"
-                    step="5"
-                    value={item.rotation || 0}
-                    onChange={(e) => updateCollageItem(item.id, { rotation: parseInt(e.target.value) })}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                  />
-                </div>
 
                 <div className="flex gap-2">
                   <button
