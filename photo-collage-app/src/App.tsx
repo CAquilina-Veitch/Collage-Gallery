@@ -72,15 +72,23 @@ function App() {
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => setViewMode('gallery')}
-                                  className={`px-4 py-2 rounded ${viewMode === 'gallery' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+                                  className={`p-2 rounded ${viewMode === 'gallery' ? 'bg-blue-600' : 'bg-gray-200'}`}
                                 >
-                                  Gallery
+                                  <img
+                                    src={`${process.env.PUBLIC_URL}/gallery.png`}
+                                    alt="Gallery"
+                                    className={`h-6 w-6 ${viewMode === 'gallery' ? 'filter brightness-0 invert' : ''}`}
+                                  />
                                 </button>
                                 <button
                                   onClick={() => setViewMode('collage')}
-                                  className={`px-4 py-2 rounded ${viewMode === 'collage' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+                                  className={`p-2 rounded ${viewMode === 'collage' ? 'bg-blue-600' : 'bg-gray-200'}`}
                                 >
-                                  Collage
+                                  <img
+                                    src={`${process.env.PUBLIC_URL}/collage.png`}
+                                    alt="Collage"
+                                    className={`h-6 w-6 ${viewMode === 'collage' ? 'filter brightness-0 invert' : ''}`}
+                                  />
                                 </button>
                               </div>
                             </>
@@ -92,9 +100,14 @@ function App() {
                             <button
                               onClick={triggerFileUpload}
                               disabled={uploading}
-                              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                              className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
                             >
-                              {uploading ? 'Uploading...' : 'Upload Photos'}
+                              <img
+                                src={`${process.env.PUBLIC_URL}/upload.png`}
+                                alt="Upload"
+                                className="h-6 w-6 filter brightness-0 invert"
+                              />
+                              <span className="hidden sm:inline">{uploading ? 'Uploading...' : 'Upload Photos'}</span>
                             </button>
                           )}
                           {selectedAlbum && viewMode === 'collage' && (
