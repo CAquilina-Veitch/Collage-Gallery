@@ -1,16 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, getDocs } from 'firebase/firestore';
 import { ref, listAll, deleteObject } from 'firebase/storage';
 import { db, storage, ALLOWED_EMAILS } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
-
-interface Album {
-  id: string;
-  name: string;
-  createdAt: any;
-  createdBy: string;
-  sharedWith: string[];
-}
+import { Album } from '../types/index';
 
 interface AlbumSidebarProps {
   isOpen: boolean;
@@ -31,6 +24,49 @@ export const AlbumSidebar: React.FC<AlbumSidebarProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const [editingAlbum, setEditingAlbum] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [editDate, setEditDate] = useState('');
+
+  // Helper function to get display date for album
+  const getDisplayDate = (album: Album): string => {
+    if (album.customDate) {
+      return album.customDate;
+    }
+    // Fallback to createdAt for existing albums without customDate
+    if (album.createdAt?.seconds) {
+      const date = new Date(album.createdAt.seconds * 1000);
+      return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear().toString().slice(-2)}`;
+    }
+    return 'No date';
+  };
+
+  // Helper function to parse dd/mm/yy date to Date object for sorting
+  const parseCustomDate = (dateStr: string): Date => {
+    if (!dateStr || dateStr === 'No date') {
+      return new Date(0); // Very old date for albums without dates
+    }
+
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+      const year = parseInt(parts[2], 10) + 2000; // Convert yy to yyyy
+      return new Date(year, month, day);
+    }
+
+    return new Date(0); // Fallback for invalid dates
+  };
+
+  // Helper function to get sorting date for album
+  const getSortingDate = useCallback((album: Album): Date => {
+    if (album.customDate) {
+      return parseCustomDate(album.customDate);
+    }
+    // Fallback to createdAt for existing albums without customDate
+    if (album.createdAt?.seconds) {
+      return new Date(album.createdAt.seconds * 1000);
+    }
+    return new Date(0);
+  }, []);
 
   useEffect(() => {
     if (!currentUser?.email) return;
@@ -46,22 +82,26 @@ export const AlbumSidebar: React.FC<AlbumSidebarProps> = ({
       snapshot.forEach((doc) => {
         albumData.push({ id: doc.id, ...doc.data() } as Album);
       });
-      setAlbums(albumData.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds));
+      setAlbums(albumData.sort((a, b) => getSortingDate(b).getTime() - getSortingDate(a).getTime()));
     });
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, getSortingDate]);
 
   const createAlbum = async () => {
     if (!newAlbumName.trim() || !currentUser?.email) return;
 
     setIsCreating(true);
     try {
+      const now = new Date();
+      const defaultDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear().toString().slice(-2)}`;
+
       await addDoc(collection(db, 'albums'), {
         name: newAlbumName,
         createdAt: serverTimestamp(),
         createdBy: currentUser.email,
-        sharedWith: [currentUser.email, ...ALLOWED_EMAILS.filter(email => email !== currentUser.email)]
+        sharedWith: [currentUser.email, ...ALLOWED_EMAILS.filter(email => email !== currentUser.email)],
+        customDate: defaultDate
       });
       setNewAlbumName('');
     } catch (error) {
@@ -74,17 +114,20 @@ export const AlbumSidebar: React.FC<AlbumSidebarProps> = ({
   const startEditing = (album: Album) => {
     setEditingAlbum(album.id);
     setEditName(album.name);
+    setEditDate(getDisplayDate(album));
   };
 
   const saveEdit = async () => {
-    if (!editName.trim() || !editingAlbum) return;
+    if (!editName.trim() || !editingAlbum || !editDate.trim()) return;
 
     try {
       await updateDoc(doc(db, 'albums', editingAlbum), {
-        name: editName.trim()
+        name: editName.trim(),
+        customDate: editDate.trim()
       });
       setEditingAlbum(null);
       setEditName('');
+      setEditDate('');
     } catch (error) {
       console.error('Error updating album:', error);
     }
@@ -93,6 +136,7 @@ export const AlbumSidebar: React.FC<AlbumSidebarProps> = ({
   const cancelEdit = () => {
     setEditingAlbum(null);
     setEditName('');
+    setEditDate('');
   };
 
   const deleteAlbum = async (album: Album) => {
@@ -241,14 +285,23 @@ export const AlbumSidebar: React.FC<AlbumSidebarProps> = ({
               >
                 {editingAlbum === album.id ? (
                   <div className="p-4">
-                    <div className="flex gap-2 mb-2">
+                    <div className="space-y-2 mb-3">
                       <input
                         type="text"
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && saveEdit()}
-                        className="flex-1 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Album name"
+                        className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                         autoFocus
+                      />
+                      <input
+                        type="text"
+                        value={editDate}
+                        onChange={(e) => setEditDate(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && saveEdit()}
+                        placeholder="Date (dd/mm/yy)"
+                        className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                     <div className="flex gap-2">
@@ -277,37 +330,33 @@ export const AlbumSidebar: React.FC<AlbumSidebarProps> = ({
                     >
                       <div className="font-medium">{album.name}</div>
                       <div className="text-sm text-gray-500">
-                        Created by {album.createdBy === currentUser?.email ? 'you' : album.createdBy}
+                        {getDisplayDate(album)}
                       </div>
                     </button>
-                    {album.createdBy === currentUser?.email && (
-                      <>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            startEditing(album);
-                          }}
-                          className="p-4 text-gray-400 hover:text-gray-600"
-                          title="Rename album"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteAlbum(album);
-                          }}
-                          className="p-4 text-gray-400 hover:text-red-600"
-                          title="Delete album"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </>
-                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startEditing(album);
+                      }}
+                      className="p-4 text-gray-400 hover:text-gray-600"
+                      title="Edit album"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteAlbum(album);
+                      }}
+                      className="p-4 text-gray-400 hover:text-red-600"
+                      title="Delete album"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
                   </div>
                 )}
               </div>

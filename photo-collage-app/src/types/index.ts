@@ -4,6 +4,7 @@ export interface Album {
   createdAt: any;
   createdBy: string;
   sharedWith: string[];
+  customDate?: string; // Format: dd/mm/yy, defaults to createdAt if not set
 }
 
 export interface Photo {

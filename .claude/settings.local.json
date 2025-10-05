@@ -20,7 +20,8 @@
       "Bash(cmd:*)",
       "Bash(cd:*)",
       "Read(//mnt/c/Users/cody.av/Desktop/**)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(npx tsc:*)"
     ],
     "deny": []
   }
