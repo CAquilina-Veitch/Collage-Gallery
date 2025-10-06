@@ -17,6 +17,7 @@ function MainApp() {
   const [viewMode, setViewMode] = useState<'gallery' | 'collage'>('gallery');
   const [uploading, setUploading] = useState(false);
   const [isLocked, setIsLocked] = useState(true); // Lock state for collage
+  const [isDrawingMode, setIsDrawingMode] = useState(false); // Drawing mode state
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -129,9 +130,28 @@ function MainApp() {
                           {selectedAlbum && viewMode === 'collage' && (
                             <>
                               <button
+                                onClick={() => {
+                                  setIsDrawingMode(!isDrawingMode);
+                                  // Auto-lock when entering drawing mode
+                                  if (!isDrawingMode) {
+                                    setIsLocked(true);
+                                  }
+                                }}
+                                className={`p-2 rounded-md transition-colors flex items-center gap-2 ${
+                                  isDrawingMode
+                                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                    : 'bg-gray-100 hover:bg-gray-200'
+                                }`}
+                                title={isDrawingMode ? "Exit drawing mode" : "Enter drawing mode"}
+                              >
+                                <span className="text-xl">✏️</span>
+                                <span className="hidden sm:inline">{isDrawingMode ? 'Drawing' : 'Draw'}</span>
+                              </button>
+                              <button
                                 onClick={() => setIsLocked(!isLocked)}
                                 className="p-2 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors flex items-center gap-2"
                                 title={isLocked ? "Unlock to edit photos" : "Lock to navigate only"}
+                                disabled={isDrawingMode}
                               >
                                 <img
                                   src={`${process.env.PUBLIC_URL}/${isLocked ? 'locked' : 'unlocked'}.png`}
@@ -165,7 +185,11 @@ function MainApp() {
                           />
                         ) : (
                           <div style={{ height: '100%', width: '100%' }}>
-                            <CollageView album={selectedAlbum} isLocked={isLocked} />
+                            <CollageView
+                              album={selectedAlbum}
+                              isLocked={isLocked}
+                              isDrawingMode={isDrawingMode}
+                            />
                           </div>
                         )
                       ) : (

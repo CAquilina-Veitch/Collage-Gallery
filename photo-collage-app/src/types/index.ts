@@ -27,3 +27,19 @@ export interface CollageItem {
   mode: 'polaroid' | 'plain';
   captionText?: string;
 }
+
+export interface DrawingStroke {
+  id: string;
+  tool: 'brush' | 'eraser';
+  points: number[]; // [x1, y1, x2, y2, ...]
+  color: string;
+  size: number;
+  timestamp: any;
+  userId: string;
+}
+
+export interface DrawingSettings {
+  tool: 'brush' | 'eraser';
+  color: string;
+  size: number;
+}

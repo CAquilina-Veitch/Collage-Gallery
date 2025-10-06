@@ -33,11 +33,31 @@ service cloud.firestore {
       
       // Collage subcollection
       match /collage/{itemId} {
-        allow read: if isWhitelisted() && 
+        allow read: if isWhitelisted() &&
                        request.auth.token.email in get(/databases/$(database)/documents/albums/$(albumId)).data.sharedWith;
-        allow write: if isWhitelisted() && 
+        allow write: if isWhitelisted() &&
                         request.auth.token.email in get(/databases/$(database)/documents/albums/$(albumId)).data.sharedWith;
       }
+
+      // Drawings subcollection
+      match /drawings/{strokeId} {
+        allow read: if isWhitelisted() &&
+                       request.auth.token.email in get(/databases/$(database)/documents/albums/$(albumId)).data.sharedWith;
+        allow write: if isWhitelisted() &&
+                        request.auth.token.email in get(/databases/$(database)/documents/albums/$(albumId)).data.sharedWith;
+      }
+    }
+
+    // All Albums collage collection
+    match /all-albums-collage/{itemId} {
+      allow read: if isWhitelisted();
+      allow write: if isWhitelisted();
+    }
+
+    // All Albums collage drawings collection
+    match /all-albums-collage-drawings/{strokeId} {
+      allow read: if isWhitelisted();
+      allow write: if isWhitelisted();
     }
   }
 }

@@ -27,7 +27,8 @@ export const ExportButton: React.FC<ExportButtonProps> = ({ album }) => {
         throw new Error('Collage element not found');
       }
 
-      const canvas = await html2canvas(collageElement as HTMLElement, {
+      // Capture the collage with html2canvas
+      const collageCanvas = await html2canvas(collageElement as HTMLElement, {
         backgroundColor: '#f3f4f6',
         scale: 2,
         useCORS: true,
@@ -35,6 +36,30 @@ export const ExportButton: React.FC<ExportButtonProps> = ({ album }) => {
         logging: false,
         imageTimeout: 15000
       });
+
+      // Find the Konva canvas (drawing layer)
+      const konvaCanvas = document.querySelector('canvas[class*="konvajs-content"]') as HTMLCanvasElement;
+
+      let canvas = collageCanvas;
+
+      // If drawing layer exists, composite it with the collage
+      if (konvaCanvas) {
+        // Create a new canvas to composite both layers
+        const compositeCanvas = document.createElement('canvas');
+        compositeCanvas.width = collageCanvas.width;
+        compositeCanvas.height = collageCanvas.height;
+        const ctx = compositeCanvas.getContext('2d');
+
+        if (ctx) {
+          // Draw collage first
+          ctx.drawImage(collageCanvas, 0, 0);
+
+          // Draw Konva canvas on top (scaled to match html2canvas scale)
+          ctx.drawImage(konvaCanvas, 0, 0, collageCanvas.width, collageCanvas.height);
+
+          canvas = compositeCanvas;
+        }
+      }
 
       if (format === 'image') {
         // Download as image

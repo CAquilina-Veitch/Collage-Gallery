@@ -2,21 +2,31 @@ import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, where, getDocs, collectionGroup } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { Album, Photo, CollageItem } from '../types';
+import { Album, Photo, CollageItem, DrawingSettings } from '../types';
+import { DrawingLayer, DrawingLayerRef } from './DrawingLayer';
+import { DrawingToolbar } from './DrawingToolbar';
 
 interface CollageViewProps {
   album: Album;
   isLocked?: boolean;
+  isDrawingMode?: boolean;
 }
 
 interface CollagePhotoItem extends CollageItem {
   photo: Photo;
 }
 
-export const CollageView: React.FC<CollageViewProps> = ({ album, isLocked = true }) => {
+export const CollageView: React.FC<CollageViewProps> = ({ album, isLocked = true, isDrawingMode = false }) => {
   const [collageItems, setCollageItems] = useState<CollagePhotoItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [drawingSettings, setDrawingSettings] = useState<DrawingSettings>({
+    tool: 'brush',
+    color: '#000000',
+    size: 5
+  });
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const drawingLayerRef = useRef<DrawingLayerRef>(null);
 
   // Debug effect to monitor state changes
   useEffect(() => {
@@ -407,6 +417,43 @@ export const CollageView: React.FC<CollageViewProps> = ({ album, isLocked = true
     };
   };
 
+  // Update container size for drawing layer
+  useEffect(() => {
+    const updateSize = () => {
+      if (canvasRef.current) {
+        const rect = canvasRef.current.getBoundingClientRect();
+        setContainerSize({ width: rect.width, height: rect.height });
+      }
+    };
+
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
+
+  // Drawing handlers
+  const handleClearAllDrawings = async () => {
+    if (drawingLayerRef.current && drawingLayerRef.current.clearAllDrawings) {
+      await drawingLayerRef.current.clearAllDrawings();
+    }
+  };
+
+  const handleUndoDrawing = async () => {
+    // Undo functionality will remove the last stroke from Firestore
+    // This is handled in DrawingLayer via the undo button
+    if (drawingLayerRef.current && drawingLayerRef.current.undoLastStroke) {
+      await drawingLayerRef.current.undoLastStroke();
+    }
+  };
+
+  // Close photo settings when entering drawing mode
+  useEffect(() => {
+    if (isDrawingMode) {
+      setShowSettings(false);
+      setSelectedItem(null);
+    }
+  }, [isDrawingMode]);
+
   return (
     <>
 
@@ -418,16 +465,17 @@ export const CollageView: React.FC<CollageViewProps> = ({ album, isLocked = true
           width: '100%',
           height: '100%',
           minHeight: '100%',
-          touchAction: 'none',
+          touchAction: isDrawingMode ? 'none' : 'none',
           userSelect: 'none',
-          WebkitUserSelect: 'none'
+          WebkitUserSelect: 'none',
+          position: 'relative'
         }}
-        onTouchStart={handleCanvasStart}
-        onTouchMove={handleCanvasMove}
-        onTouchEnd={handleCanvasEnd}
-        onMouseDown={handleCanvasStart}
-        onMouseMove={handleCanvasMove}
-        onMouseUp={handleCanvasEnd}
+        onTouchStart={!isDrawingMode ? handleCanvasStart : undefined}
+        onTouchMove={!isDrawingMode ? handleCanvasMove : undefined}
+        onTouchEnd={!isDrawingMode ? handleCanvasEnd : undefined}
+        onMouseDown={!isDrawingMode ? handleCanvasStart : undefined}
+        onMouseMove={!isDrawingMode ? handleCanvasMove : undefined}
+        onMouseUp={!isDrawingMode ? handleCanvasEnd : undefined}
       >
         {/* Infinite scrollable canvas */}
         <div
@@ -527,6 +575,19 @@ export const CollageView: React.FC<CollageViewProps> = ({ album, isLocked = true
             );
           })}
         </div>
+
+        {/* Drawing Layer - positioned absolutely over canvas */}
+        {isDrawingMode && containerSize.width > 0 && (
+          <DrawingLayer
+            ref={drawingLayerRef}
+            album={album}
+            canvasTransform={canvasTransform}
+            containerWidth={containerSize.width}
+            containerHeight={containerSize.height}
+            settings={drawingSettings}
+            isDrawingMode={isDrawingMode}
+          />
+        )}
       </div>
 
 
@@ -669,6 +730,15 @@ export const CollageView: React.FC<CollageViewProps> = ({ album, isLocked = true
         </div>,
         document.body // Render to document body to escape overflow-hidden
       )}
+
+      {/* Drawing Toolbar - Render when in drawing mode */}
+      <DrawingToolbar
+        settings={drawingSettings}
+        onSettingsChange={setDrawingSettings}
+        onClearAll={handleClearAllDrawings}
+        onUndo={handleUndoDrawing}
+        isVisible={isDrawingMode}
+      />
 
       {/* Debug Overlay - only in development, also via Portal */}
       {process.env.NODE_ENV === 'development' && ReactDOM.createPortal(
