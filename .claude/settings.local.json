@@ -21,7 +21,10 @@
       "Bash(cd:*)",
       "Read(//mnt/c/Users/cody.av/Desktop/**)",
       "WebSearch",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(git log:*)",
+      "Bash(cat:*)",
+      "Bash(sed:*)"
     ],
     "deny": []
   }

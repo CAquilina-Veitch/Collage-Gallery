@@ -134,11 +134,17 @@ export const DrawingLayer = forwardRef<DrawingLayerRef, DrawingLayerProps>(({
     const pos = stage.getPointerPosition();
     if (!pos) return;
 
-    // Transform position to account for canvas pan/zoom
-    const transformedX = (pos.x - canvasTransform.x) / canvasTransform.scale;
-    const transformedY = (pos.y - canvasTransform.y) / canvasTransform.scale;
+    // Get position relative to the transformed stage
+    // Since the stage is already transformed with canvas transform,
+    // we need to get the position in stage coordinates
+    const layer = stage.children[0];
+    if (!layer) return;
 
-    setCurrentStroke([transformedX, transformedY]);
+    const transform = layer.getAbsoluteTransform().copy();
+    transform.invert();
+    const stagePos = transform.point(pos);
+
+    setCurrentStroke([stagePos.x, stagePos.y]);
   };
 
   // Handle drawing move
@@ -151,11 +157,15 @@ export const DrawingLayer = forwardRef<DrawingLayerRef, DrawingLayerProps>(({
     const pos = stage.getPointerPosition();
     if (!pos) return;
 
-    // Transform position to account for canvas pan/zoom
-    const transformedX = (pos.x - canvasTransform.x) / canvasTransform.scale;
-    const transformedY = (pos.y - canvasTransform.y) / canvasTransform.scale;
+    // Get position relative to the transformed stage
+    const layer = stage.children[0];
+    if (!layer) return;
 
-    setCurrentStroke(prev => [...prev, transformedX, transformedY]);
+    const transform = layer.getAbsoluteTransform().copy();
+    transform.invert();
+    const stagePos = transform.point(pos);
+
+    setCurrentStroke(prev => [...prev, stagePos.x, stagePos.y]);
   };
 
   // Handle drawing end
@@ -212,14 +222,19 @@ export const DrawingLayer = forwardRef<DrawingLayerRef, DrawingLayerProps>(({
         onTouchMove={handleMouseMove}
         onTouchEnd={handleMouseUp}
       >
-        <Layer>
+        <Layer
+          x={canvasTransform.x}
+          y={canvasTransform.y}
+          scaleX={canvasTransform.scale}
+          scaleY={canvasTransform.scale}
+        >
           {/* Render all saved strokes */}
           {strokes.map((stroke) => (
             <Line
               key={stroke.id}
               points={stroke.points}
               stroke={stroke.tool === 'eraser' ? '#f3f4f6' : stroke.color}
-              strokeWidth={stroke.size}
+              strokeWidth={stroke.size / canvasTransform.scale}
               tension={0.5}
               lineCap="round"
               lineJoin="round"
@@ -234,7 +249,7 @@ export const DrawingLayer = forwardRef<DrawingLayerRef, DrawingLayerProps>(({
             <Line
               points={currentStroke}
               stroke={settings.tool === 'eraser' ? '#f3f4f6' : settings.color}
-              strokeWidth={settings.size}
+              strokeWidth={settings.size / canvasTransform.scale}
               tension={0.5}
               lineCap="round"
               lineJoin="round"
